@@ -82,7 +82,14 @@
  */
 #define OTM8009A_FORMAT_RGB888    ((uint32_t)0x00) /* Pixel format chosen is RGB888 : 24 bpp */
 #define OTM8009A_FORMAT_RBG565    ((uint32_t)0x02) /* Pixel format chosen is RGB565 : 16 bpp */
+#define RGB_TO_GARY(C_R, C_G, C_B)  ((uint8_t)(0.299f*C_R + 0.587f*C_G + 0.114f*C_B))
+#define ToRGB565(RGB888)            ((uint16_t)((RGB888&0xF80000>>8)|(RGB888&0x00FC00>>5)|(RGB888&0x0000F8>>3)))
+#define ToRGB888(RGB565)            ((uint16_t)((RGB565&0xF800<<8)|(RGB565&0x07E0<<5)|(RGB565&0x001F<<3)))
+#define RGB565_R(RGB565)            ((uint8_t)((Color&0xF800)>>11))
+#define RGB565_G(RGB565)            ((uint8_t)((Color&0x07E0)>>5))
+#define RGB565_B(RGB565)            ((uint8_t)(Color&0x001F))
 
+#define RGB(C_R, C_G, C_B)  ((uint32_t)(((C_R<<8)&0xF800)|((C_G<<3)&0x07E0)|((C_B>>3)&0x001F)))
 /**
   * @brief  otm8009a_480x800 Size
   */

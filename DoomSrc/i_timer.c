@@ -20,8 +20,8 @@
 #include "SDL.h"
 #endif
 
-#include "i_timer.h"
-#include "doomtype.h"
+#include "chocdoom/i_timer.h"
+#include "chocdoom/doomtype.h"
 
 
 #include "stm32f4xx_hal.h"

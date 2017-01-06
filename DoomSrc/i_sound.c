@@ -22,17 +22,17 @@
 #include "SDL_mixer.h"
 #endif
 
-#include "config.h"
-#include "doomfeatures.h"
-#include "doomtype.h"
+#include "chocdoom/config.h"
+#include "chocdoom/doomfeatures.h"
+#include "chocdoom/doomtype.h"
 
 #ifdef ORIGCODE
 #include "gusconf.h"
 #endif
-#include "i_sound.h"
-#include "i_video.h"
-#include "m_argv.h"
-#include "m_config.h"
+#include "chocdoom/i_sound.h"
+#include "chocdoom/i_video.h"
+#include "chocdoom/m_argv.h"
+#include "chocdoom/m_config.h"
 
 // Sound sample rate to use for digital output (Hz)
 

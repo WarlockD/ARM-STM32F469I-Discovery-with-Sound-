@@ -25,16 +25,16 @@
 static const char
 rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include "main.h"
-#include "config.h"
-#include "v_video.h"
-#include "m_argv.h"
-#include "d_event.h"
-#include "d_main.h"
-#include "i_video.h"
-#include "z_zone.h"
+#include "chocdoom/config.h"
+#include "chocdoom/v_video.h"
+#include "chocdoom/m_argv.h"
+#include "chocdoom/d_event.h"
+#include "chocdoom/d_main.h"
+#include "chocdoom/i_video.h"
+#include "chocdoom/z_zone.h"
 
-#include "tables.h"
-#include "doomkeys.h"
+#include "chocdoom/tables.h"
+#include "chocdoom/doomkeys.h"
 
 #include <stdint.h>
 #include <stdbool.h>

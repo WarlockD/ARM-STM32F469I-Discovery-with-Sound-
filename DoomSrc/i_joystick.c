@@ -24,13 +24,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "doomtype.h"
-#include "d_event.h"
-#include "i_joystick.h"
-#include "i_system.h"
+#include "chocdoom/doomtype.h"
+#include "chocdoom/d_event.h"
+#include "chocdoom/i_joystick.h"
+#include "chocdoom/i_system.h"
 
-#include "m_config.h"
-#include "m_misc.h"
+#include "chocdoom/m_config.h"
+#include "chocdoom/m_misc.h"
 
 // When an axis is within the dead zone, it is set to zero.
 // This is 5% of the full range:

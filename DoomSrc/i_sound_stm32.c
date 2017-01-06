@@ -78,8 +78,10 @@ typedef struct channel_s {
 // This is the built in buffer frequency
 
 #define BUFFER_TIME_SIZE_MS 30
-#define MIXER_FREQUENCY  ((uint32_t)11025)
-#define SAMPLECOUNT		1024
+
+#define MIXER_FREQUENCY   AUDIO_FREQUENCY_11K
+//#define MIXER_FREQUENCY  ((uint32_t)11025)
+#define SAMPLECOUNT		(uint32_t)((float)MIXER_FREQUENCY* ((float)BUFFER_TIME_SIZE_MS/1000.0f))    //1024
 // two channels, and second buffer for the circle
 #define MIXBUFFERSIZE	(SAMPLECOUNT*2*2)
 
@@ -765,14 +767,11 @@ static void _I_STM32_UpdateSound(void)
 		// Filter to the half sample rate of the original sound effect
 		// (maximum frequency, by nyquist)
 
-		float dt = 1.0f / MIXER_FREQUENCY;
-		float rc = 1.0f / (3.14f * MIXER_FREQUENCY); //samplerate);
-		float alpha = dt / (rc + dt);
 		int active_channels=0;
 	    // Mix sounds into the mixing buffer.
 	    // Loop over step*SAMPLECOUNT,
 	    //  that is 512 values for two channels.
-	    while (leftout != leftend)
+	    while (!(leftout >= leftend))
 	    {
 	    	active_channels=0;
 		// Reset left/right value.
@@ -816,18 +815,15 @@ static void _I_STM32_UpdateSound(void)
 		// Same for right hardware channel.
 		if (dr > 0x7fff)dl = 0x7fff;
 		else if (dr < -0x8000)  *rightout = -0x8000;
-		*leftout = dr;
-		*rightout = dr;
 
-		// Increment current pointers in mixbuffer.
-		// stupid simple low pass filter
-		// (FIX ME!  GET RID OF THE FLOATS)
-	    *leftout = (int16_t) (alpha * *leftout + (1 - alpha) * *rightout);
+			*leftout = dl;
+			*rightout = dr;
+
 			leftout += 2;
 			rightout += 2;
 	    }
 	    ticks = HAL_GetTick()-ticks;
-	if(active_channels >0) printf("Sound processing time %ul chan=%i\r\n", ticks,active_channels);
+	//if(active_channels >0) printf("Sound processing time %ul chan=%i\r\n", ticks,active_channels);
 	buffer_state = BUFFER_STATE_PLAYING;
 }
 //
@@ -895,7 +891,7 @@ static boolean I_STM32_InitSound(boolean _use_sfx_prefix)
     memset((int8_t*)mixbuffer,0,MIXBUFFERSIZE*sizeof(int16_t));
     printf("mixbuffer_size=%i ", MIXBUFFERSIZE*sizeof(int16_t));
     /* Initialize the Audio codec and all related peripherals (I2S, I2C, IOExpander, IOs...) */
-    if(BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_BOTH, audio_volume=60, MIXER_FREQUENCY) != AUDIO_OK)
+    if(BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_BOTH, audio_volume=70, MIXER_FREQUENCY) != AUDIO_OK)
     {
     	fprintf(stderr, "BSP_AUDIO_OUT_Init() Unable to set up sound.\r\n");
     	return false;

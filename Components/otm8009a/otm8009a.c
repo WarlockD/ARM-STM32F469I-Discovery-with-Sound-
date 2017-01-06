@@ -142,7 +142,16 @@ const uint8_t ShortRegData35[] = {OTM8009A_CMD_NOP, 0xF0};
 const uint8_t ShortRegData36[] = {OTM8009A_CMD_SLPOUT, 0x00};
 const uint8_t ShortRegData37[] = {OTM8009A_CMD_COLMOD, OTM8009A_COLMOD_RGB565};
 const uint8_t ShortRegData38[] = {OTM8009A_CMD_COLMOD, OTM8009A_COLMOD_RGB888};
-const uint8_t ShortRegData39[] = {OTM8009A_CMD_MADCTR, OTM8009A_MADCTR_MODE_LANDSCAPE};
+
+//#define OTM8009A_MADCTR_MODE_LANDSCAPE      0x60  /* MY = 0, MX = 1, MV = 1, ML = 0, RGB = 0 */
+// const uint8_t ShortRegData39[] = {OTM8009A_CMD_MADCTR, OTM8009A_MADCTR_MODE_LANDSCAPE};
+#define OTM8009A_CMD_MADCTR_MX (1<<6)
+#define OTM8009A_CMD_MADCTR_MY (1<<7)
+#define OTM8009A_CMD_MADCTR_MV (1<<5)
+#define OTM8009A_CMD_MADCTR_ML (1<<4)
+#define OTM8009A_CMD_MADCTR_RGB (1<<3)
+
+const uint8_t ShortRegData39[] = {OTM8009A_CMD_MADCTR, OTM8009A_CMD_MADCTR_MY |OTM8009A_CMD_MADCTR_MV};
 const uint8_t ShortRegData40[] = {OTM8009A_CMD_WRDISBV, 0x7F};
 const uint8_t ShortRegData41[] = {OTM8009A_CMD_WRCTRLD, 0x2C};
 const uint8_t ShortRegData42[] = {OTM8009A_CMD_WRCABC, 0x02};

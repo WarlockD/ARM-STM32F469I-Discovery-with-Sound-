@@ -34,28 +34,28 @@
 #include "SDL.h"
 #endif
 
-#include "config.h"
+#include "chocdoom/config.h"
 
-#include "deh_str.h"
-#include "doomtype.h"
-#include "m_argv.h"
-#include "m_config.h"
-#include "m_misc.h"
-#include "i_joystick.h"
-#include "i_sound.h"
-#include "i_timer.h"
-#include "i_video.h"
+#include "chocdoom/deh_str.h"
+#include "chocdoom/doomtype.h"
+#include "chocdoom/m_argv.h"
+#include "chocdoom/m_config.h"
+#include "chocdoom/m_misc.h"
+#include "chocdoom/i_joystick.h"
+#include "chocdoom/i_sound.h"
+#include "chocdoom/i_timer.h"
+#include "chocdoom/i_video.h"
 
-#include "i_system.h"
+#include "chocdoom/i_system.h"
 
-#include "w_wad.h"
-#include "z_zone.h"
+#include "chocdoom/w_wad.h"
+#include "chocdoom/z_zone.h"
 
 #ifdef __MACOSX__
 #include <CoreFoundation/CFUserNotification.h>
 #endif
 
-#define DEFAULT_RAM 6 /* MiB */
+#define DEFAULT_RAM 8 /* MiB */
 #define MIN_RAM     6  /* MiB */
 
 
