@@ -34,6 +34,7 @@
 #include "chocdoom/m_argv.h"
 #include "chocdoom/m_config.h"
 
+
 // Sound sample rate to use for digital output (Hz)
 
 int snd_samplerate = 44100;
@@ -67,20 +68,12 @@ extern void I_InitTimidityConfig(void);
 //extern sound_module_t sound_sdl_module;
 //extern sound_module_t sound_pcsound_module;
 //extern music_module_t music_sdl_module;
-//extern music_module_t music_opl_module;
+extern music_module_t music_opl_module;
+music_module_t music_stm32_module;
 //extern music_module_t music_stm32_module;
 extern sound_module_t sound_stm32_module;
-// For OPL module:
 
-//extern int opl_io_port;
 
-// For native music module:
-
-//extern char *timidity_cfg_path;
-
-// DOS-specific options: These are unused but should be maintained
-// so that the config file can be shared between chocolate
-// doom and doom.exe
 
 #if ORIGCODE
 static int snd_sbport = 0;
@@ -109,9 +102,16 @@ static music_module_t *music_modules[] =
     &music_sdl_module,
     &music_opl_module,
 #endif
+	&music_opl_module,
     NULL,
 };
+static snddevice_t music_opl_devices[] =
+{
+    SNDDEVICE_ADLIB,
+    SNDDEVICE_SB,
+};
 
+//music_module_t music_opl_module =
 // Check if a sound device is in the given list of devices
 
 static boolean SndDeviceInList(snddevice_t device, snddevice_t *list,

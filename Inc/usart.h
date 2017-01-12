@@ -50,10 +50,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+
+
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include <stdint.h>
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart3;
@@ -67,7 +70,21 @@ extern void Error_Handler(void);
 void MX_USART3_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+void uart_return_after_newline(bool enable);
+void uart_putc(char c); /// blocking instant put c
+void uart_puts(const char* str); // blocking, instant put string
+void uart_write(const uint8_t* data, size_t len); // blocking instant put data
+typedef enum {
+	UART_MODE_NONE= 0,
+	UART_MODE_RIGHT_JUSTIFY=1,
+	UART_MODE_HEX=2,
+	UART_MODE_UNSIGNED=4,
+	UART_MODE_SEPERTOR=8,
+	UART_MODE_FILL0=16,
+	UART_MODE_NLNT=16,
+} t_uart_mode;
 
+void uart_puti(unsigned long value, int width, t_uart_mode mode);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

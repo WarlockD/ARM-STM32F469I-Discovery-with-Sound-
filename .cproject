@@ -45,6 +45,8 @@
 									<listOptionValue builtIn="false" value="../Components/Common"/>
 									<listOptionValue builtIn="false" value="../Components/otm8009a"/>
 									<listOptionValue builtIn="false" value="../DoomSrc"/>
+									<listOptionValue builtIn="false" value="&quot;../DoomSrc\opl&quot;"/>
+									<listOptionValue builtIn="false" value="../DoomSrc/chcodoom"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1134411373" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
@@ -59,7 +61,7 @@
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.442258721" name="MCU G++ Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler">
 								<option id="gnu.cpp.compiler.option.optimization.level.926200119" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.level.643557258" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
-								<option id="gnu.cpp.compiler.option.include.paths.251589608" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
+								<option id="gnu.cpp.compiler.option.include.paths.251589608" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../Inc"/>
 									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc"/>
 									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
@@ -72,7 +74,7 @@
 									<listOptionValue builtIn="false" value="../Components/otm8009a"/>
 									<listOptionValue builtIn="false" value="../DoomSrc"/>
 								</option>
-								<option id="gnu.cpp.compiler.option.preprocessor.def.396695523" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
+								<option id="gnu.cpp.compiler.option.preprocessor.def.396695523" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
 									<listOptionValue builtIn="false" value="__packed=&quot;__attribute__((__packed__))&quot;"/>
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>

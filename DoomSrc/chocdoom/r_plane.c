@@ -43,10 +43,12 @@ planefunction_t		ceilingfunc;
 
 // Here comes the obnoxious "visplane".
 #define MAXVISPLANES	128
-visplane_t		visplanes[MAXVISPLANES];
+visplane_t*		visplanes = NULL;
+//visplane_t		visplanes[MAXVISPLANES];
 visplane_t*		lastvisplane;
 visplane_t*		floorplane;
 visplane_t*		ceilingplane;
+static int		numvisplanes;
 
 // ?
 #define MAXOPENINGS	SCREENWIDTH*64
@@ -85,7 +87,31 @@ fixed_t			cacheddistance[SCREENHEIGHT];
 fixed_t			cachedxstep[SCREENHEIGHT];
 fixed_t			cachedystep[SCREENHEIGHT];
 
+// ran out of static ram, meh
+// [crispy] remove MAXVISPLANES Vanilla limit
+static void R_RaiseVisplanes (visplane_t** vp)
+{
+    if (lastvisplane - visplanes == numvisplanes)
+    {
+	int numvisplanes_old = numvisplanes;
+	visplane_t* visplanes_old = visplanes;
 
+	numvisplanes = numvisplanes ? 2 * numvisplanes : MAXVISPLANES;
+	visplanes = crispy_realloc(visplanes, numvisplanes * sizeof(*visplanes));
+	memset(visplanes + numvisplanes_old, 0, (numvisplanes - numvisplanes_old) * sizeof(*visplanes));
+
+	lastvisplane = visplanes + numvisplanes_old;
+	floorplane = visplanes + (floorplane - visplanes_old);
+	ceilingplane = visplanes + (ceilingplane - visplanes_old);
+
+	if (numvisplanes_old)
+	    fprintf(stderr, "R_FindPlane: Hit MAXVISPLANES limit at %d, raised to %d.\n", numvisplanes_old, numvisplanes);
+
+	// keep the pointer passed as argument in relation to the visplanes pointer
+	if (vp)
+	    *vp = visplanes + (*vp - visplanes_old);
+    }
+}
 
 //
 // R_InitPlanes
@@ -94,6 +120,7 @@ fixed_t			cachedystep[SCREENHEIGHT];
 void R_InitPlanes (void)
 {
   // Doh!
+	// So yea we are creating visplains here cause we ran out of static ram
 }
 
 
@@ -235,8 +262,11 @@ R_FindPlane
     if (check < lastvisplane)
 	return check;
 		
+    R_RaiseVisplanes(&check);
+
+
     if (lastvisplane - visplanes == MAXVISPLANES)
-	I_Error ("R_FindPlane: no more visplanes");
+    	I_Error ("R_FindPlane: no more visplanes");
 		
     lastvisplane++;
 

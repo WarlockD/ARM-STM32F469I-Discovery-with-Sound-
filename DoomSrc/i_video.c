@@ -46,11 +46,12 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include "stm32469i_discovery_lcd.h"
 #include "stm32469i_discovery_sd.h"
 #include "lcd.h"
-
+#include <assert.h>
 
 #include "touch.h"
 #include "button.h"
 
+#define SCALE_2X
 #define GFX_RGB565(r, g, b)			((((r & 0xF8) >> 3) << 11) | (((g & 0xFC) >> 2) << 5) | ((b & 0xF8) >> 3))
 
 #define GFX_RGB565_R(color)			((0xF800 & color) >> 11)
@@ -69,6 +70,9 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 // The screen buffer; this is modified to draw things to the screen
 
 byte *I_VideoBuffer = NULL;
+#ifdef SCALE_2X
+byte* I_VideoBufferX2 = NULL;
+#endif
 
 // If true, game is running as a screensaver
 
@@ -127,6 +131,65 @@ static bool last_button_state;
 // run state
 
 static bool run;
+//extern uint32_t* layer0_address;
+extern DMA2D_HandleTypeDef hdma2d_eval;
+extern LTDC_HandleTypeDef  hltdc_eval;
+//extern DSI_HandleTypeDef hdsi_eval;
+
+#define DMA2D_WORKING               ((DMA2D->CR & DMA2D_CR_START))
+#define DMA2D_WAIT                  do { while (DMA2D_WORKING); DMA2D->IFCR = DMA2D_IFSR_CTCIF;} while (0);
+#define DMA2D_CLUT_WORKING          ((DMA2D->FGPFCCR & DMA2D_FGPFCCR_START))
+#define DMA2D_CLUT_WAIT              do { while (DMA2D_CLUT_WORKING); DMA2D->IFCR = DMA2D_IFSR_CCTCIF;} while (0);
+
+volatile bool pallete_load_complete = true;
+volatile bool frame_finished = true;
+void HAL_DMA2D_CLUTLoadingCpltCallback(DMA2D_HandleTypeDef *hdma2d)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hdma2d);
+  pallete_load_complete =true;
+
+}
+void HAL_FrameFinished(DMA2D_HandleTypeDef *hdma2d)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hdma2d);
+  frame_finished =true;
+
+}
+void HAL_FrameError(DMA2D_HandleTypeDef *hdma2d)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hdma2d);
+  while(1) {
+	  BSP_LED_Toggle(LED_GREEN);
+	  HAL_Delay(1);
+  }
+
+}
+void SetupDMA() {
+	DMA2D_WAIT;
+	hdma2d_eval.Instance = DMA2D;
+	//  hdma2d.Init.Mode = DMA2D_M2M;
+	hdma2d_eval.Init.Mode = DMA2D_M2M_PFC;
+	hdma2d_eval.Init.ColorMode = DMA2D_OUTPUT_ARGB8888;
+#ifdef SCALE_2X
+	hdma2d_eval.Init.OutputOffset = 800-(SCREENWIDTH*2);
+#else
+	hdma2d_eval.Init.OutputOffset = 800-SCREENWIDTH;
+#endif
+	hdma2d_eval.XferCpltCallback = HAL_FrameFinished;
+	hdma2d_eval.XferErrorCallback = 	HAL_FrameError;
+	hdma2d_eval.LayerCfg[1].InputOffset = 0;
+	 // hdma2d.LayerCfg[1].InputColorMode = DMA2D_INPUT_ARGB8888;
+
+	hdma2d_eval.LayerCfg[1].InputColorMode =DMA2D_INPUT_L8;
+	hdma2d_eval.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
+	hdma2d_eval.LayerCfg[1].InputAlpha = 0;
+	if (HAL_DMA2D_Init(&hdma2d_eval) != HAL_OK)  Error_Handler();
+	if (HAL_DMA2D_ConfigLayer(&hdma2d_eval, 1) != HAL_OK)  Error_Handler();
+
+}
 
 void I_InitGraphics (void)
 {
@@ -144,13 +207,19 @@ void I_InitGraphics (void)
 //	lcd_refresh ();
 
 	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);
-
+#ifdef SCALE_2X
+	I_VideoBufferX2 = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT*4, PU_STATIC, NULL);
+#endif
 	screenvisible = true;
+	SetupDMA();
 }
 
 void I_ShutdownGraphics (void)
 {
 	Z_Free (I_VideoBuffer);
+#ifdef SCALE_2X
+	Z_Free (I_VideoBufferX2);
+#endif
 }
 
 void I_StartFrame (void)
@@ -337,43 +406,69 @@ void I_UpdateNoBlit (void)
 {
 }
 
-extern uint32_t* layer0_address;
-extern DMA2D_HandleTypeDef hdma2d_eval;
-extern LTDC_HandleTypeDef  hltdc_eval;
-extern DSI_HandleTypeDef hdsi_eval;
+void TM_INT_DMA2DGRAPHIC_InitAndTransfer(void) {
+	/* Wait until transfer is done first from other calls */
+	DMA2D_WAIT;
 
+	/* DeInit DMA2D */
+	RCC->AHB1RSTR |= RCC_AHB1RSTR_DMA2DRST;
+	RCC->AHB1RSTR &= ~RCC_AHB1RSTR_DMA2DRST;
+
+	/* Initialize DMA2D */
+	//DMA2D_Init(&GRAPHIC_DMA2D_InitStruct);
+
+	/* Start transfer */
+	DMA2D->CR |= (uint32_t)DMA2D_CR_START;
+
+	/* Wait till transfer ends */
+	DMA2D_WAIT;
+}
+void UpdateNoScale() {
+	assert(HAL_DMA2D_PollForTransfer(&hdma2d_eval,50) == HAL_OK);
+	// MODIFY_REG(hdma2d->Instance->OOR, DMA2D_OOR_LO, 800-SCREENWIDTH);
+	HAL_DMA2D_Start(&hdma2d_eval, (uint32_t)I_VideoBuffer, (hltdc_eval.LayerCfg[0].FBStartAdress), SCREENWIDTH,  SCREENHEIGHT);
+}
+void DoubleScanLIne(uint8_t* src, uint8_t* dst, uint32_t original_size){
+	for (int x = 0; x < original_size; x++){
+		*dst++ = *src; *dst++ = *src++;
+	}
+}
+void DoubleScreen(uint8_t* src, uint8_t* dst, uint32_t width, uint32_t height){
+	uint32_t nwidth = width*2;
+	uint32_t nheight = height*2;
+	for (uint32_t y = 0; y < height; y++){
+		uint8_t* dst_start = dst;
+		for (int x = 0; x < width; x++){
+			dst[0] = dst[1] = *src;
+			//dst[nwidth] = dst[nwidth+1] = *src;
+			src++;
+			dst+=2;
+			//*dst++ = *src; *dst++ = *src++;
+		}
+		memcpy(dst, dst_start, nwidth);
+		dst+= nwidth;
+		//memcpy(dst, start_src, nwidth);
+	}
+}
+void Update2XScale() {
+	assert(HAL_DMA2D_PollForTransfer(&hdma2d_eval,50) == HAL_OK);
+	uint32_t* display_start = (uint32_t*)(hltdc_eval.LayerCfg[0].FBStartAdress);// + 4 * y * tft_width);
+	//   (uint8_t*)(display_start + (tft_width*tft_height)); // I_VideoBufferX2;
+	DoubleScreen(I_VideoBuffer, I_VideoBufferX2, SCREENWIDTH, SCREENHEIGHT);
+//	MODIFY_REG(DMA2D->OOR, DMA2D_OOR_LO, 800-(SCREENWIDTH*2));
+	HAL_DMA2D_Start(&hdma2d_eval, (uint32_t)I_VideoBufferX2, (uint32_t)display_start, SCREENWIDTH*2,  SCREENHEIGHT*2);
+}
 void I_FinishUpdate (void)
 {
-	int x, y;
-	byte index;
-	uint32_t tft_width = BSP_LCD_GetXSize();
-	uint32_t tft_height = BSP_LCD_GetYSize();
-	screenvisible = true;
-	//  BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
-	//  BSP_LCD_SetBackColor(LCD_COLOR_BLUE);
-	//  BSP_LCD_SetFont(&Font16);
-	//  BSP_LCD_DisplayStringAtLine(1, (uint8_t *)"Display test");
-	//(hltdc_eval.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos)))
 
-	__IO uint32_t* display_start = (uint32_t*)(hltdc_eval.LayerCfg[0].FBStartAdress);// + 4 * y * tft_width);
-
-	for (y = 0; y < SCREENHEIGHT; y++)
-	{
-		__IO uint32_t* display_line = display_start;
-		for (x = 0; x < SCREENWIDTH; x++)
-		{
-			index = I_VideoBuffer[y * SCREENWIDTH + x];
-			display_line[0] = display_line[1] = display_line[tft_width]  = display_line[tft_width+1] = rgb888_palette[index];
-			display_line+= 2;
-			//display[4*(y*tft_width + x)] = rgb888_palette[index];
-			// *(__IO uint32_t*) (hltdc_eval.LayerCfg[ActiveLayer].FBStartAdress + (4*(Ypos*BSP_LCD_GetXSize() + Xpos))) = RGB_Code;
-
-			//BSP_LCD_DrawPixel(x+20,y+20,rgb888_palette[index]);
-			//(uint16_t*)lcd_frame_buffer)[x * GFX_MAX_WIDTH + (GFX_MAX_WIDTH - y - 1)] = rgb565_palette[index];
-			//layer0_address[x * tft_width + (tft_height - y - 1)]=rgb888_palette[index];
-		}
-		display_start += tft_width * 2;
-	}
+	DMA2D_WAIT;
+	//assert(HAL_DMA2D_PollForTransfer(&hdma2d_eval,50) == HAL_OK);
+#ifdef SCALE_2X
+	Update2XScale();
+#else
+	UpdateNoScale();
+#endif
+	DMA2D_WAIT;
 }
 
 //
@@ -384,21 +479,47 @@ void I_ReadScreen (byte* scr)
     memcpy (scr, I_VideoBuffer, SCREENWIDTH * SCREENHEIGHT);
 }
 
+
 //
 // I_SetPalette
 //
 void I_SetPalette (byte* palette)
 {
+	DMA2D_CLUT_WAIT;
+	DMA2D_WAIT;
+
+	//assert(HAL_DMA2D_PollForTransfer(&hdma2d_eval,50) == HAL_OK);
+	//while(!pallete_load_complete);
+//	pallete_load_complete = false;
 	int i;
 	col_t* c;
-
+	bool palette_changed = false;
 	for (i = 0; i < 256; i++)
 	{
 		c = (col_t*)palette;
+
+		uint32_t nc = GFX_ARGB8888(c->r, c->g,c->b,GFX_OPAQUE);
+		if(nc != rgb888_palette[i]){
+			rgb888_palette[i] = nc;
+			palette_changed = true;
+		}
 		//rgb565_palette[i] = GFX_RGB565(gammatable[usegamma][c->r], gammatable[usegamma][c->g],gammatable[usegamma][c->b]);
-		rgb888_palette[i] = GFX_ARGB8888(c->r, c->g,c->b,GFX_OPAQUE);
 		palette += 3;
 	}
+	if(palette_changed){
+		DMA2D_CLUTCfgTypeDef lut;
+		lut.CLUTColorMode = DMA2D_CCM_ARGB8888;
+		lut.Size = 0xFF;
+		lut.pCLUT = rgb888_palette;
+
+		HAL_DMA2D_ConfigCLUT(&hdma2d_eval, lut, 1);
+		HAL_DMA2D_EnableCLUT(&hdma2d_eval, 1);
+		DMA2D_CLUT_WAIT;
+	//SET_BIT(hdma2d->Instance->FGPFCCR, DMA2D_FGPFCCR_START);
+		//assert(HAL_DMA2D_PollForTransfer(&hdma2d_eval,50) == HAL_OK);
+	}
+
+	//while(HAL_DMA2D_PollForTransfer(&hdma2d_eval))
 }
 
 // Given an RGB value, find the closest matching palette index.

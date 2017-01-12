@@ -42,42 +42,23 @@
   register char * stack_ptr asm("sp");
 #endif
 
-static char _number_buffer[16];
-void ManualPrintNumber(int32_t number, uint8_t base) {
-	const char* num = itoa(number,_number_buffer,10);
-	write(1,num,strlen(num));
-}
-void ManualPrintNumberComma(int32_t a) {
-	if(a<0) { putchar('-'); a*=-1; }
 
-	long c = 1;
-	while((c*=1000)<a);
-	while(c>1)
-	{
-	   int t = (a%c)/(c/1000);
-	   if(!(((c>a)||(t>99)))) {
-		   if(t>9) write(1,"0",1);
-		   else  write(1,"00",2);
-	   }
-	   const char* num = itoa(t,_number_buffer,10);
-	   write(1,num,strlen(num));
-	   c/=1000;
-	   if(!(c == 1)) write(1,",",1);
-	}
-}
-void ManualPrintString(const char* str) {
-	write(1,str,strlen(str));
-}
+
 void ManualPrintHeap(uint32_t amount, uint32_t left) {
-	ManualPrintString("Heap expanded by ");
-	ManualPrintNumberComma(amount);
-	ManualPrintString(", memory left: ");
-	ManualPrintNumberComma(left);
-	ManualPrintString("\r\n");
+	uart_puts("Heap expanded by ");
+	uart_puti(amount,0,UART_MODE_NONE);
+
+	uart_puts(", memory left: ");
+	uart_puti(left,0,UART_MODE_NONE);
+	uart_puts("\r\n");
 }
+
+
+
 #define FB_SIZE (800*480*sizeof(uint32_t))
-#define SDRAM_START (SDRAM_DEVICE_ADDR + FB_SIZE)
-#define SDRAM_END (SDRAM_START - FB_SIZE + SDRAM_DEVICE_SIZE)
+#define FB_SIZE_TOTAL (FB_SIZE*2)
+#define SDRAM_START (SDRAM_DEVICE_ADDR + FB_SIZE_TOTAL)
+#define SDRAM_END (SDRAM_START - FB_SIZE_TOTAL + SDRAM_DEVICE_SIZE)
 caddr_t _sbrk_sdram(int incr){
 	static caddr_t _heap_end_of_sdram=0;
 	static caddr_t heap_end=0;
@@ -85,23 +66,14 @@ caddr_t _sbrk_sdram(int incr){
 	if (heap_end == 0){
 		heap_end = (caddr_t)SDRAM_START;
 		_heap_end_of_sdram =  (caddr_t)SDRAM_END;
-		ManualPrintString("_sbrk called first : ");
-		ManualPrintNumberComma((uint32_t)(_heap_end_of_sdram-heap_end));
-		ManualPrintString("\r\n");
+		uart_puts("_sbrk_sdram called first : ");
+		uart_puti((uint32_t)(_heap_end_of_sdram-heap_end),0,UART_MODE_NONE);
+		uart_puts("\r\n");
 	}
 	prev_heap_end = heap_end;
-#ifdef FreeRTOS
-	/* Use the NVIC offset register to locate the main stack pointer. */
-	min_stack_ptr = (char*)(*(unsigned int *)*(unsigned int *)0xE000ED08);
-	/* Locate the STACK bottom address */
-	min_stack_ptr -= MAX_STACK_SIZE;
-
-	if (heap_end + incr > min_stack_ptr)
-#else
 	if (heap_end + incr > _heap_end_of_sdram)
-#endif
 	{
-		write(1, "Heap and stack collision\n", 25);
+		uart_puts("Heap and stack collision\n");
 		abort();
 		errno = ENOMEM;
 		return (caddr_t) -1;
@@ -122,8 +94,9 @@ caddr_t _sbrk_sram(int incr)
 #endif
 	if (heap_end == 0){
 		heap_end = &end;
-		ManualPrintString("_sbrk called first : ");
-		ManualPrintNumberComma((uint32_t)(stack_ptr-heap_end));
+		ManualPrintString("_sbrk_sram called first : ");
+		ManualPrintNumber((uint32_t)(stack_ptr-heap_end),10);
+	//	ManualPrintNumberComma((uint32_t)(stack_ptr-heap_end));
 		ManualPrintString("\r\n");
 	}
 
@@ -233,12 +206,13 @@ int _lseek(int file, int ptr, int dir)
 	return 0;
 }
 
+
 int _write(int file, char *ptr, int len)
 {
 	if(file == 1) { // standard output
-		if(HAL_UART_Transmit(&huart3, (uint8_t*)ptr,len,1000) == HAL_OK) return len;
+		uart_write((uint8_t*)ptr,len);
 	} else if(file == 2) { // std error
-		if(HAL_UART_Transmit(&huart3, (uint8_t*)ptr,len,1000) == HAL_OK) return len;
+		uart_write((uint8_t*)ptr,len);
 	}
 	return len;
 }
@@ -273,7 +247,10 @@ int _unlink(char *name)
 int _times(struct tms *buf)
 {
 	if(buf) {
-		buf->tms_stime  = buf->tms_cstime  = buf->tms_stime = buf->tms_cstime = HAL_GetTick();
+		buf->tms_stime  = HAL_GetTick()/1000;
+		buf->tms_cstime  = 0;
+		buf->tms_stime = 0;
+		buf->tms_cstime = 0;
 		return 0;
 	}
 	return -1;

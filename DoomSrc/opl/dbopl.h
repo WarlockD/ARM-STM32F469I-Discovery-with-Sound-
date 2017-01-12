@@ -11,7 +11,8 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  */
-
+#ifndef _DBOPL_H_
+#define _DBOPL_H_
 #include <inttypes.h>
 
 //Use 8 handlers based on a small logatirmic wavetabe and an exponential table for volume
@@ -201,3 +202,5 @@ void Chip__GenerateBlock3(Chip *self, Bitu total, Bit32s* output );
 #ifdef _MSC_VER
 #define inline __inline
 #endif
+
+#endif //_DBOPL_H_

@@ -48,6 +48,12 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
+#include <string.h>
+static char uart_buffer[256];
+static UART_HandleTypeDef* s_chuart = NULL;
+void uart_set_console_out(UART_HandleTypeDef* huart){
+	s_chuart = huart;
+}
 
 /* USER CODE END 0 */
 
@@ -80,7 +86,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
   if(uartHandle->Instance==USART3)
   {
   /* USER CODE BEGIN USART3_MspInit 0 */
-
+	  uart_set_console_out(&huart3);
   /* USER CODE END USART3_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_USART3_CLK_ENABLE();
@@ -126,6 +132,64 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 } 
 
 /* USER CODE BEGIN 1 */
+volatile bool s_newline_enable = true;
+void uart_return_after_newline(bool enable) {
+	s_newline_enable = enable;
+}
+void ManualPrintNumberComma(int32_t a) {
+	if(a<0) { push_char('-'); a*=-1; }
+	long c = 1;
+	while((c*=1000)<a);
+	while(c>1)
+	{
+	   int t = (a%c)/(c/1000);
+	   if(!(((c>a)||(t>99)))) {
+		   push_char('0');
+		   if(t < 10) push_char('0');
+	   }
+	   writeout_number(t);
+	   c/=1000;
+	   if(!(c == 1)) push_char(',');
+	}
+}
+#define IS_NEWLINECHAR(N) ((N)=='\r' || (N)=='\n')
+
+void uart_putraw(char c) {
+	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TXE))); // trasmit empty
+	s_chuart->Instance->DR = c;
+}
+void _uart_putc(char c){
+	static char prev = 0;
+	if(s_newline_enable) {
+		//if(!prev && IS_NEWLINECHAR(c)) prev = c;
+		if(prev == '\n' && c != '\r') uart_putraw('\r');
+		else if(prev == '\r' && c != '\n') uart_putraw('\n');
+		prev = c;
+	}
+	uart_putraw(c);
+}
+
+void uart_putc(char c){
+	_uart_putc(c);
+	 while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
+}
+
+void uart_puts(const char* str){
+	while(*str) _uart_putc(*str++);
+	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
+}
+void uart_write(const uint8_t* data, size_t len){
+	while(len--) _uart_putc(*data++);
+	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
+}
+
+void uart_puti(unsigned long value, int width, t_uart_mode mode) {
+	itoa(value,uart_buffer,10);
+	uart_puts(uart_buffer);
+	//char* buffer = uart_buffr +
+	//void uart_puti(unsigned long value, int width, t_uart_mode mode);
+}
+
 
 /* USER CODE END 1 */
 

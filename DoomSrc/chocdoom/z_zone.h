@@ -69,5 +69,6 @@ unsigned int Z_ZoneSize(void);
 #define Z_ChangeTag(p,t)                                       \
     Z_ChangeTag2((p), (t), __FILE__, __LINE__)
 
-
+// careful with this as this is outside the doom zone ram
+void *crispy_realloc(void *ptr, size_t size);
 #endif
