@@ -4,8 +4,7 @@
 #include "dsihost.h"
 #include "fatfs.h"
 #include "ltdc.h"
-#include "rng.h"
-#include "rtc.h"
+
 #include "sdio.h"
 #include "usart.h"
 #include "gpio.h"

@@ -47,8 +47,6 @@
 #include "dsihost.h"
 #include "fatfs.h"
 #include "ltdc.h"
-#include "rng.h"
-#include "rtc.h"
 #include "sdio.h"
 #include "usart.h"
 #include "gpio.h"
@@ -64,6 +62,12 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
+#include "usbh_core.h"
+#include "stm32469i_discovery.h"
+#include "stm32469i_discovery_lcd.h"
+#include "usbh_hid.h"
+#include "usbh_hid_parser.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -99,10 +103,119 @@ void MountSD() {
 }
 //void  D_DoomMain();
 void D_DoomMain (int argc, char** argv);
-void test_it();
+
+USBH_HandleTypeDef hUSBHost;
+
+/* Private function prototypes -----------------------------------------------*/
+//static void SystemClock_Config(void);
 
 
 
+static bool usb_keyboard_connected = false;
+
+HID_KEYBD_Info_TypeDef *USBH_GetKeyboardInfo() {
+	if(!usb_keyboard_connected) return NULL;
+	return USBH_HID_GetKeybdInfo(&hUSBHost);
+}
+const char* TypeToText(USBH_HandleTypeDef *phost, HID_TypeTypeDef type) {
+	static char UNKONWN_CHAR[32];
+	switch(type){
+	case HID_MOUSE: return "HID_MOUSE";
+	case HID_KEYBOARD: return "HID_KEYBOARD";
+	default:
+		sprintf(UNKONWN_CHAR,"HID_UNKNOWN(%2.2X)",phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].bInterfaceProtocol);
+		return UNKONWN_CHAR;
+	}
+}
+static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
+{
+	  HID_TypeTypeDef type;
+  switch(id)
+  {
+  case HOST_USER_SELECT_CONFIGURATION:
+	  printf("USB ---- HOST_USER_SELECT_CONFIGURATION\n");
+    break;
+
+  case HOST_USER_DISCONNECTION:
+	  usb_keyboard_connected = false;
+	  printf("USB ---- APPLICATION_DISCONNECT\n");
+    break;
+
+  case HOST_USER_CLASS_ACTIVE:
+	  type = USBH_HID_GetDeviceType(phost);
+	  printf("USB ---- HOST_USER_CLASS_ACTIVE(%s)\r\n",TypeToText(phost,type));
+	  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
+	  usb_keyboard_connected=true;
+    break;
+
+  case HOST_USER_CONNECTION:
+
+	  printf("USB ---- HOST_USER_CONNECTION\r\n");
+	  //if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
+	  //		  usb_keyboard_connected = true;
+	  	//	  printf("Keyboard Connected!\r\n");
+	  	//  }
+    break;
+  case HOST_USER_CLASS_SELECTED:
+	  type = USBH_HID_GetDeviceType(phost);
+	  printf("USB ---- HOST_USER_CLASS_SELECTED(%s)\r\n",TypeToText(phost,type));
+	  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
+	  break;
+  case HOST_USER_UNRECOVERED_ERROR:
+  	  printf("USB ---- HOST_USER_UNRECOVERED_ERROR\r\n");
+  	  break;
+  default:
+	  printf("USB ---- UNKNOWN\n");
+    break;
+  }
+}
+
+void other_things() {
+	USBH_Process(&hUSBHost);
+}
+void test_usb_loop() {
+	 printf("test_usb_loop starting\r\n");
+	 uint32_t ticks = HAL_GetTick() + 1000;
+	while(1){
+		other_things();
+		if(usb_keyboard_connected){
+			if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
+				HID_KEYBD_Info_TypeDef* usb_key = USBH_GetKeyboardInfo();
+				if(usb_key!=NULL){
+					char c = USBH_HID_GetASCIICode(usb_key);
+					printf("PRESED: '%c'\r\n",c);
+				}
+			}
+		}
+
+
+		uint32_t tt = HAL_GetTick();
+		if(tt > ticks){
+			ticks += 1000;
+			 BSP_LED_Toggle(LED_GREEN);
+		}
+
+	}
+}
+
+void Error_Handler(void);
+void refreshUSB() {
+    /* USB Host Background task */
+    USBH_Process(&hUSBHost);
+}
+void SetupUSB() {
+	 /* Init HID Application */
+	  /* Init Host Library */
+	  USBH_Init(&hUSBHost, USBH_UserProcess, 0);
+
+	  /* Add Supported Class */
+	  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
+
+	  /* Start Host Process */
+	  USBH_Start(&hUSBHost);
+	  printf("SetupUSB Finished\r\n");
+
+}
 /* USER CODE END 0 */
 
 int main(void)
@@ -131,8 +244,7 @@ int main(void)
   BSP_LED_Off(LED_BLUE);
   BSP_LED_Off(LED_ORANGE);
   BSP_LED_Off(LED_GREEN);
-  MX_RNG_Init();
-  MX_RTC_Init();
+
   BSP_SD_Init();
   MX_USART3_UART_Init();
   MX_FATFS_Init();
@@ -151,15 +263,16 @@ int main(void)
     BSP_LCD_SelectLayer(0);
     BSP_LCD_Clear(LCD_COLOR_BLACK);
     BSP_TS_Init(800,480);
-
-
+    SetupUSB();
+    printf("Then printf is setup\r\n");
+   // test_usb_loop();
     // ok lets do audio!
     /* Try to Init Audio interface in diffrent config in case of failure */
  //  BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_AUTO, 299, I2S_AUDIOFREQ_48K);
 //   BSP_AUDIO_OUT_SetAudioFrameSlot(CODEC_AUDIOFRAME_SLOT_02);
 
    // LCD_BriefDisplay();
-  printf("Then printf is setup\r\n");
+
 
  MountSD();
 // test_it();
@@ -189,9 +302,104 @@ int main(void)
 
 }
 
+
+/**
+  * @brief  System Clock Configuration
+  *         The system Clock is configured as follow :
+  *            System Clock source            = PLL (HSE)
+  *            SYSCLK(Hz)                     = 180000000
+  *            HCLK(Hz)                       = 180000000
+  *            AHB Prescaler                  = 1
+  *            APB1 Prescaler                 = 4
+  *            APB2 Prescaler                 = 2
+  *            HSE Frequency(Hz)              = 8000000
+  *            PLL_M                          = 8
+  *            PLL_N                          = 360
+  *            PLL_P                          = 2
+  *            PLL_Q                          = 7
+  *            PLL_R                          = 2
+  *            VDD(V)                         = 3.3
+  *            Main regulator output voltage  = Scale1 mode
+  *            Flash Latency(WS)              = 5
+  *         The USB clock configuration from PLLSAI:
+  *            PLLSAIM                        = 8
+  *            PLLSAIN                        = 384
+  *            PLLSAIP                        = 8
+  * @param  None
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_ClkInitTypeDef RCC_ClkInitStruct;
+  RCC_OscInitTypeDef RCC_OscInitStruct;
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct;
+
+  /* Enable Power Control clock */
+  __HAL_RCC_PWR_CLK_ENABLE();
+
+  /* The voltage scaling allows optimizing the power consumption when the device is
+     clocked below the maximum system frequency, to update the voltage scaling value
+     regarding system frequency refer to product datasheet.  */
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+  /* Enable HSE Oscillator and activate PLL with HSE as source */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+#if defined(USE_STM32469I_DISCO_REVA)
+  RCC_OscInitStruct.PLL.PLLM = 25;
+#else
+  RCC_OscInitStruct.PLL.PLLM = 8;
+#endif /* USE_STM32469I_DISCO_REVA */
+  RCC_OscInitStruct.PLL.PLLN = 360;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 7;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  if(HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* Enable the OverDrive to reach the 180 Mhz Frequency */
+  if(HAL_PWREx_EnableOverDrive() != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* Select PLLSAI output as USB clock source */
+  PeriphClkInitStruct.PLLSAI.PLLSAIQ = 7;
+  PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
+  PeriphClkInitStruct.PLLSAI.PLLSAIP = RCC_PLLSAIP_DIV8;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_CK48;
+  PeriphClkInitStruct.Clk48ClockSelection = RCC_CK48CLKSOURCE_PLLSAIP;
+  HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
+
+  /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
+     clocks dividers */
+  RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  if(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /**Configure the Systick interrupt time
+  */
+HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+
+  /**Configure the Systick
+  */
+HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+
+/* SysTick_IRQn interrupt configuration */
+HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
 /** System Clock Configuration
 */
-void SystemClock_Config(void)
+void SystemClock_Config_Old(void)
 {
 
   RCC_OscInitTypeDef RCC_OscInitStruct;

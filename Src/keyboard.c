@@ -1,12 +1,15 @@
 /**
   ******************************************************************************
-  * File Name          : RNG.c
-  * Description        : This file provides code for the configuration
-  *                      of the RNG instances.
+  * @file    USB_Host/HID_Standalone/Src/keyboard.c 
+  * @author  MCD Application Team
+  * @version V1.0.5
+  * @date    03-June-2016
+  * @brief   This file implements the HID keyboard functions
   ******************************************************************************
+  * @attention
   *
-  * Copyright (c) 2016 STMicroelectronics International N.V. 
-  * All rights reserved.
+  * <h2><center>&copy; Copyright © 2016 STMicroelectronics International N.V. 
+  * All rights reserved.</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without 
   * modification, are permitted, provided that the following conditions are met:
@@ -41,70 +44,7 @@
   *
   ******************************************************************************
   */
-
 /* Includes ------------------------------------------------------------------*/
-#include "rng.h"
+#include "main.h"
 
-/* USER CODE BEGIN 0 */
 
-/* USER CODE END 0 */
-
-RNG_HandleTypeDef hrng;
-
-/* RNG init function */
-void MX_RNG_Init(void)
-{
-
-  hrng.Instance = RNG;
-  if (HAL_RNG_Init(&hrng) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-}
-
-void HAL_RNG_MspInit(RNG_HandleTypeDef* rngHandle)
-{
-
-  if(rngHandle->Instance==RNG)
-  {
-  /* USER CODE BEGIN RNG_MspInit 0 */
-
-  /* USER CODE END RNG_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_RNG_CLK_ENABLE();
-  /* USER CODE BEGIN RNG_MspInit 1 */
-
-  /* USER CODE END RNG_MspInit 1 */
-  }
-}
-
-void HAL_RNG_MspDeInit(RNG_HandleTypeDef* rngHandle)
-{
-
-  if(rngHandle->Instance==RNG)
-  {
-  /* USER CODE BEGIN RNG_MspDeInit 0 */
-
-  /* USER CODE END RNG_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_RNG_CLK_DISABLE();
-  }
-  /* USER CODE BEGIN RNG_MspDeInit 1 */
-
-  /* USER CODE END RNG_MspDeInit 1 */
-} 
-
-/* USER CODE BEGIN 1 */
-
-/* USER CODE END 1 */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -45,6 +45,9 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include "stm32469i_discovery_sdram.h"
 #include "stm32469i_discovery_lcd.h"
 #include "stm32469i_discovery_sd.h"
+#include "usbh_hid_keybd.h"
+extern USBH_HandleTypeDef hUSBHost;
+
 #include "lcd.h"
 #include <assert.h>
 
@@ -212,6 +215,7 @@ void I_InitGraphics (void)
 #endif
 	screenvisible = true;
 	SetupDMA();
+
 }
 
 void I_ShutdownGraphics (void)
@@ -227,6 +231,155 @@ void I_StartFrame (void)
 
 }
 
+
+// we need to sort the keys in order so we can see if we need to send a key up message
+// this is by far the fastest 0,10
+static __inline__  void key_sorting(int16_t* d) {
+#define SWAP(x,y) if (d[y] > d[x]) { int16_t tmp = d[x]; d[x] = d[y]; d[y] = tmp; }
+	SWAP(4, 9);
+	SWAP(3, 8);
+	SWAP(2, 7);
+	SWAP(1, 6);
+	SWAP(0, 5);
+	SWAP(1, 4);
+	SWAP(6, 9);
+	SWAP(0, 3);
+	SWAP(5, 8);
+	SWAP(0, 2);
+	SWAP(3, 6);
+	SWAP(7, 9);
+	SWAP(0, 1);
+	SWAP(2, 4);
+	SWAP(5, 7);
+	SWAP(8, 9);
+	SWAP(1, 2);
+	SWAP(4, 6);
+	SWAP(7, 8);
+	SWAP(3, 5);
+	SWAP(2, 5);
+	SWAP(6, 8);
+	SWAP(1, 3);
+	SWAP(4, 7);
+	SWAP(2, 3);
+	SWAP(6, 7);
+	SWAP(3, 4);
+	SWAP(5, 6);
+	SWAP(4, 5);
+#undef SWAP
+}
+// turn this into an array so we can configure it easier
+
+int USBHidKeyToDoomKey(int usb_key) {
+	switch(usb_key) {
+	// wasd
+	case HID_KEY_A: return KEY_STRAFE_L;
+	case HID_KEY_D: return KEY_STRAFE_R;
+	case HID_KEY_W: return KEY_UPARROW;
+	case HID_KEY_S: return KEY_DOWNARROW;
+	case HID_KEY_Q: return KEY_RIGHTARROW;
+	case HID_KEY_E: return KEY_LEFTARROW;
+
+	case HID_KEY_RIGHTARROW: return KEY_RIGHTARROW;
+	case HID_KEY_LEFTARROW: return KEY_LEFTARROW;
+	case HID_KEY_UPARROW: return KEY_UPARROW;
+	case HID_KEY_DOWNARROW: return KEY_DOWNARROW;
+
+	case HID_KEY_LEFTCONTROL: return KEY_USE;
+	case HID_KEY_SPACEBAR: return KEY_FIRE;
+	case HID_KEY_ESCAPE: return KEY_ESCAPE;
+	case HID_KEY_ENTER: return KEY_ENTER;
+	case HID_KEY_TAB: return KEY_TAB;
+	case HID_KEY_F1: return KEY_F1;
+	case HID_KEY_F2: return KEY_F2;
+	case HID_KEY_F3: return KEY_F3;
+	case HID_KEY_F4: return KEY_F4;
+	case HID_KEY_F5: return KEY_F5;
+	case HID_KEY_F6: return KEY_F6;
+	case HID_KEY_F7: return KEY_F7;
+	case HID_KEY_F8: return KEY_F8;
+	case HID_KEY_F9: return KEY_F9;
+	case HID_KEY_F10: return KEY_F10;
+	case HID_KEY_F11: return KEY_F11;
+	case HID_KEY_F12: return KEY_F12;
+	case HID_KEY_BACKSPACE: return KEY_BACKSPACE;
+	case HID_KEY_PAUSE: return KEY_PAUSE;
+	case HID_KEY_EQUAL_PLUS: return KEY_EQUALS;
+	case HID_KEY_MINUS_UNDERSCORE: return KEY_MINUS;
+	default:
+		printf("unknown key");
+		return 0;
+		break;
+	}
+
+}
+
+//static HID_KEYBD_Info_TypeDef prev_keys = { 0,0,0,0,0,0,0,0,0, { 0,0,0,0,0,0 } };
+static boolean keyboard_connected = false;
+static int16_t prev_keys[11] = {0,0,0,0,0,0,0,0,0,0,0 }; // 10 keys at once
+static int16_t incomming_keys[11] = {0,0,0,0,0,0,0,0,0,0,0 }; // 10 keys at once
+void ConvertKeys(HID_KEYBD_Info_TypeDef* usb_key, int16_t* doom_keys){
+	int16_t* in = doom_keys;
+	memset(doom_keys,0,11);
+	if(usb_key->lctrl || usb_key->rctrl)  *in++ = KEY_RCTRL;
+	if(usb_key->lalt || usb_key->ralt)  *in++ = KEY_RALT;
+	if(usb_key->lshift || usb_key->rshift)  *in++ = KEY_RSHIFT;
+	for(int i=0;i<6 && usb_key->keys[i]; i++)
+		*in++ = USBHidKeyToDoomKey(usb_key->keys[i]);
+	key_sorting(doom_keys);
+	printf("KEYS DOWN: ");
+	for(int i=0;i<10; i++) printf("%2.2X ", doom_keys[i]);
+	printf("\r\n");
+}
+
+void process_keys(int16_t* in, int16_t* out ){
+		event_t event;
+		while(*in && *out){
+			if(*in !=0 && (*out == 0 || *in < *out)) {
+				event.type =  ev_keyup;
+				event.data1 = *in;
+				event.data2 = -1;
+				event.data3 = -1;
+				D_PostEvent (&event);
+				printf("Key Up %i\r\n",*in);
+				in++;
+			} else if(*out != 0 && (*in == 0 || *out < *in)){
+				event.type =  ev_keydown;
+				event.data1 = *out;
+				event.data2 = -1;
+				event.data3 = -1;
+				D_PostEvent (&event);
+				printf("Key Down %i\r\n",*out
+						);
+				out++;
+			}
+			else {
+				if(*in) in++;
+				if(*out) out++;
+			} // equal
+		}
+}
+HID_KEYBD_Info_TypeDef *USBH_GetKeyboardInfo(); // from main.c
+
+void DISABLED_USBH_HID_EventCallback(USBH_HandleTypeDef *phost){
+	printf("USBH_HID_EventCallback\r\n");
+	//if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
+		HID_KEYBD_Info_TypeDef* usb_key =  USBH_HID_GetKeybdInfo(phost);
+		if(usb_key!=NULL){
+			char c = USBH_HID_GetASCIICode(usb_key);
+			printf("PRESED: '%c'\r\n",c);
+		}
+	//}
+}
+void I_USB_Keyboard_Event() {
+	USBH_Process(&hUSBHost);
+	HID_KEYBD_Info_TypeDef* usb_key = USBH_GetKeyboardInfo();
+	if(usb_key == NULL) return;
+	printf("keyboard update\r\n");
+	ConvertKeys(usb_key,incomming_keys);
+	process_keys(incomming_keys,prev_keys );
+	memcpy(prev_keys, incomming_keys, 11);
+
+}
 void I_GetEvent (void)
 {
 	event_t event;
@@ -247,7 +400,7 @@ void I_GetEvent (void)
 	}
 
 	touch_main ();
-
+	 I_USB_Keyboard_Event();
 	if ((touch_state.x != last_touch_state.x) || (touch_state.y != last_touch_state.y) || (touch_state.status != last_touch_state.status))
 	{
 		last_touch_state = touch_state;
@@ -404,6 +557,7 @@ void I_StartTic (void)
 
 void I_UpdateNoBlit (void)
 {
+	 other_things();
 }
 
 void TM_INT_DMA2DGRAPHIC_InitAndTransfer(void) {

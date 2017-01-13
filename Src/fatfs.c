@@ -47,7 +47,7 @@ uint8_t retSD;    /* Return value for SD */
 char SD_Path[4];  /* SD logical drive path */
 
 /* USER CODE BEGIN Variables */
-#include "rtc.h"
+
 
 /* USER CODE END Variables */    
 
@@ -73,7 +73,7 @@ DWORD get_fattime(void)
 	RTC_TimeTypeDef time;
 	RTC_DateTypeDef date;
 
-	HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
+//	HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
 	DWORD systime=0;
 	systime |= (date.Year - 1980) << 25;
 	systime |= date.Month << 21;

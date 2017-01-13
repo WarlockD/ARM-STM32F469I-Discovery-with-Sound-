@@ -1,12 +1,15 @@
 /**
   ******************************************************************************
-  * File Name          : RTC.h
-  * Description        : This file provides code for the configuration
-  *                      of the RTC instances.
+  * @file    USB_Host/HID_Standalone/Inc/usbh_conf.h
+  * @author  MCD Application Team
+  * @version V1.0.5
+  * @date    03-June-2016
+  * @brief   General low level driver configuration
   ******************************************************************************
+  * @attention
   *
-  * Copyright (c) 2016 STMicroelectronics International N.V. 
-  * All rights reserved.
+  * <h2><center>&copy; Copyright © 2016 STMicroelectronics International N.V. 
+  * All rights reserved.</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without 
   * modification, are permitted, provided that the following conditions are met:
@@ -40,47 +43,71 @@
   * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
-  */
+  */  
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __rtc_H
-#define __rtc_H
-#ifdef __cplusplus
- extern "C" {
-#endif
+#ifndef __USBH_CONF_H
+#define __USBH_CONF_H
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
-#include "main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-/* USER CODE BEGIN Includes */
+/* Exported types ------------------------------------------------------------*/
+#define USBH_MAX_NUM_ENDPOINTS                4
+#define USBH_MAX_NUM_INTERFACES               4
+#define USBH_MAX_NUM_CONFIGURATION            2
+#define USBH_MAX_NUM_SUPPORTED_CLASS          2
+#define USBH_KEEP_CFG_DESCRIPTOR              0
+#define USBH_MAX_SIZE_CONFIGURATION           0x200
+#define USBH_MAX_DATA_BUFFER                  0x200
+#define USBH_DEBUG_LEVEL                      3
+#define USBH_USE_OS                           0
 
-/* USER CODE END Includes */
-
-extern RTC_HandleTypeDef hrtc;
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
-
-extern void Error_Handler(void);
-
-void MX_RTC_Init(void);
-
-/* USER CODE BEGIN Prototypes */
-
-/* USER CODE END Prototypes */
-
-#ifdef __cplusplus
-}
+/* Exported constants --------------------------------------------------------*/
+/* Exported macro ------------------------------------------------------------*/
+/* CMSIS OS macros */   
+#if (USBH_USE_OS == 1)
+  #include "cmsis_os.h"
+  #define   USBH_PROCESS_PRIO    osPriorityNormal
 #endif
-#endif /*__ rtc_H */
 
-/**
-  * @}
-  */
+/* Memory management macros */   
+#define USBH_malloc               malloc
+#define USBH_free                 free
+#define USBH_memset               memset
+#define USBH_memcpy               memcpy
+    
+/* DEBUG macros */   
+#if (USBH_DEBUG_LEVEL > 0)
+#define USBH_UsrLog(...)   printf("USB_USER: ");\
+						   printf(__VA_ARGS__);\
+                           printf("\n");
+#else
+#define USBH_UsrLog(...)   
+#endif 
+                            
+                            
+#if (USBH_DEBUG_LEVEL > 1)
 
-/**
-  * @}
-  */
+#define USBH_ErrLog(...)   printf("USB_ERROR: ") ;\
+                           printf(__VA_ARGS__);\
+                           printf("\n");
+#else
+#define USBH_ErrLog(...)   
+#endif 
+                                                      
+#if (USBH_DEBUG_LEVEL > 2)                         
+#define USBH_DbgLog(...)   printf("USB_DEBUG : ") ;\
+                           printf(__VA_ARGS__);\
+                           printf("\n");
+#else
+#define USBH_DbgLog(...)                         
+#endif
+
+/* Exported functions ------------------------------------------------------- */
+
+#endif /* __USBH_CONF_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

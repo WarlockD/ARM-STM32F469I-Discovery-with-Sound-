@@ -408,6 +408,7 @@ boolean D_GrabMouseCallback(void)
 //
 //  D_DoomLoop
 //
+
 void D_DoomLoop (void)
 {
     if (bfgedition &&
@@ -444,7 +445,8 @@ void D_DoomLoop (void)
 
     while (1)
     {
-		// frame syncronous IO operations
+
+	    // frame syncronous IO operations
 		I_StartFrame ();
 
 		TryRunTics (); // will run at least one tic

@@ -188,6 +188,7 @@ void UsageFault_Handler(void)
 /* USER CODE BEGIN 1 */
 extern LTDC_HandleTypeDef hltdc_eval;
 extern DMA2D_HandleTypeDef hdma2d_eval;
+extern HCD_HandleTypeDef hhcd;
 void LTDC_IRQHandler(void)
 {
   HAL_LTDC_IRQHandler(&hltdc_eval);
@@ -195,5 +196,10 @@ void LTDC_IRQHandler(void)
 void DMA2D_IRQHandler(void) {
 	HAL_DMA2D_IRQHandler(&hdma2d_eval);
 }
+void OTG_FS_IRQHandler(void)
+{
+  HAL_HCD_IRQHandler(&hhcd);
+}
+
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

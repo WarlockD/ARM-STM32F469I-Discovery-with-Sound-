@@ -16,10 +16,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "usart.h"
-#include "rtc.h"
 #include "ff.h"
 #include "stm32469i_discovery_sdram.h"
 #include <setjmp.h>
+
+//#define DEBUG_SBRK
 
 //jmp_buf
 //#define FreeRTOS
@@ -66,9 +67,11 @@ caddr_t _sbrk_sdram(int incr){
 	if (heap_end == 0){
 		heap_end = (caddr_t)SDRAM_START;
 		_heap_end_of_sdram =  (caddr_t)SDRAM_END;
+#ifdef DEBUG_SBRK
 		uart_puts("_sbrk_sdram called first : ");
 		uart_puti((uint32_t)(_heap_end_of_sdram-heap_end),0,UART_MODE_NONE);
 		uart_puts("\r\n");
+#endif
 	}
 	prev_heap_end = heap_end;
 	if (heap_end + incr > _heap_end_of_sdram)
@@ -79,7 +82,9 @@ caddr_t _sbrk_sdram(int incr){
 		return (caddr_t) -1;
 	} else {
 		heap_end += incr;
+#ifdef DEBUG_SBRK
 		ManualPrintHeap(incr, (uint32_t)(_heap_end_of_sdram-heap_end));
+#endif
 	}
 
 	return (caddr_t) prev_heap_end;
@@ -143,7 +148,7 @@ int _gettimeofday (struct timeval * tp, struct timezone * tzp)
 	  time_t ret;
 	  RTC_TimeTypeDef time;
 	  RTC_DateTypeDef date;
-	  HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
+	//  HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
 	  tm.tm_sec = time.Seconds;
 	  tm.tm_min = time.Minutes;
 	  tm.tm_hour = time.Hours;
