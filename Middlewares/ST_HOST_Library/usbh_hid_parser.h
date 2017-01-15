@@ -73,7 +73,7 @@ typedef struct
 } 
 HID_Report_ItemTypedef;
 
-
+void print_buffer(uint8_t* data, size_t length);
 uint32_t HID_ReadItem (HID_Report_ItemTypedef *ri, uint8_t ndx);
 uint32_t HID_WriteItem(HID_Report_ItemTypedef *ri, uint32_t value, uint8_t ndx);
 

@@ -312,10 +312,10 @@ static  const  uint8_t  HID_KEYBRD_Codes[] = {
   * @param  phost: Host handle
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_HID_KeybdInit(USBH_HandleTypeDef *phost)
+USBH_StatusTypeDef USBH_HID_KeybdInit(HID_HandleTypeDef *HID_Handle)
 {
   uint32_t x;
-  HID_HandleTypeDef *HID_Handle =  (HID_HandleTypeDef *) phost->pActiveClass->pData;  
+
     
   keybd_info.lctrl=keybd_info.lshift= 0;
   keybd_info.lalt=keybd_info.lgui= 0;
@@ -333,7 +333,7 @@ USBH_StatusTypeDef USBH_HID_KeybdInit(USBH_HandleTypeDef *phost)
     HID_Handle->length = (sizeof(keybd_report_data)/sizeof(uint32_t));
   }
   HID_Handle->pData = (uint8_t*)keybd_report_data;
-  fifo_init(&HID_Handle->fifo, phost->device.Data, HID_QUEUE_SIZE * sizeof(keybd_report_data));
+  fifo_init(&HID_Handle->fifo, HID_Handle->phost->device.Data, HID_QUEUE_SIZE * sizeof(keybd_report_data));
   
   return USBH_OK;    
 }

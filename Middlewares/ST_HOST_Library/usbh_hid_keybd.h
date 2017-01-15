@@ -35,7 +35,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_hid.h"
-#include "usbh_hid_keybd.h"
+//#include "usbh_hid_keybd.h"
 
 /** @addtogroup USBH_LIB
   * @{
@@ -278,24 +278,6 @@
 #define  HID_KEY_RIGHTALT                           0xE6
 #define  HID_KEY_RIGHT_GUI                          0xE7
 
-typedef struct 
-{
-  uint8_t state;
-  uint8_t lctrl;
-  uint8_t lshift;
-  uint8_t lalt;
-  uint8_t lgui;
-  uint8_t rctrl;
-  uint8_t rshift;
-  uint8_t ralt;
-  uint8_t rgui;
-  uint8_t keys[6];
-} 
-HID_KEYBD_Info_TypeDef;
-
-USBH_StatusTypeDef USBH_HID_KeybdInit(USBH_HandleTypeDef *phost);
-HID_KEYBD_Info_TypeDef *USBH_HID_GetKeybdInfo(USBH_HandleTypeDef *phost);
-uint8_t USBH_HID_GetASCIICode(HID_KEYBD_Info_TypeDef *info);
 
 /**
   * @}

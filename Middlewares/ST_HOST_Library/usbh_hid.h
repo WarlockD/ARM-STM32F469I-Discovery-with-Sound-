@@ -35,12 +35,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_core.h"
-#include "usbh_hid_mouse.h"
-#include "usbh_hid_keybd.h"
- 
-/** @addtogroup USBH_LIB
-  * @{
-  */
 
 /** @addtogroup USBH_CLASS
   * @{
@@ -193,11 +187,11 @@ typedef struct _HIDDescriptor
 {
   uint8_t   bLength;
   uint8_t   bDescriptorType;
-  uint16_t  bcdHID;               /* indicates what endpoint this descriptor is describing */
-  uint8_t   bCountryCode;        /* specifies the transfer type. */
-  uint8_t   bNumDescriptors;     /* specifies the transfer type. */
+  uint16_t  bcdHID;               	/* indicates what endpoint this descriptor is describing */
+  uint8_t   bCountryCode;        	/* specifies the transfer type. */
+  uint8_t   bNumDescriptors;     	/* specifies the transfer type. */
   uint8_t   bReportDescriptorType;    /* Maximum Packet Size this endpoint is capable of sending or receiving */  
-  uint16_t  wItemLength;          /* is used to specify the polling interval of certain transfers. */
+  uint16_t  wItemLength;          	/* is used to specify the polling interval of certain transfers. */
 }
 HID_DescTypeDef;
 
@@ -210,11 +204,13 @@ typedef struct
      uint16_t size;
      uint8_t  lock;
 } FIFO_TypeDef;
-
-
+struct _HID_Process;
+typedef USBH_StatusTypeDef  ( * HID_Callback)(struct _HID_Process*);
 /* Structure for HID process */
 typedef struct _HID_Process
 {
+  USBH_HandleTypeDef *phost;
+  uint8_t			   Interface;
   uint8_t              OutPipe; 
   uint8_t              InPipe; 
   HID_StateTypeDef     state; 
@@ -229,10 +225,18 @@ typedef struct _HID_Process
   uint32_t             timer;
   uint8_t              DataReady;
   HID_DescTypeDef      HID_Desc;  
-  USBH_StatusTypeDef  ( * Init)(USBH_HandleTypeDef *phost);
-}
-HID_HandleTypeDef;
-
+  void*				   DriverUserData;
+  HID_Callback			Init;
+  //USBH_StatusTypeDef  ( * Init)(struct _HID_Process*);
+  HID_Callback  Callback;
+  HID_Callback  Process;
+  HID_Callback  DeInit;
+} HID_HandleTypeDef;
+// install a driver
+// once its installed it will be called once we get the
+// report discriptor so you can parse and check that
+// return OK if the driver is insalled or fail otherwise
+USBH_StatusTypeDef USBH_HID_InstallDriver(HID_Callback init);
 /**
   * @}
   */ 
@@ -276,14 +280,41 @@ HID_HandleTypeDef;
   */ 
 extern USBH_ClassTypeDef  HID_Class;
 #define USBH_HID_CLASS    &HID_Class
-/**
-  * @}
-  */ 
 
-/** @defgroup USBH_HID_CORE_Exported_FunctionsPrototype
-  * @{
-  */ 
 
+// standard keyboard and mouse classes
+typedef struct _HID_MOUSE_Info
+{
+  uint8_t              x;
+  uint8_t              y;
+  uint8_t              buttons[3];
+} HID_MOUSE_Info_TypeDef;
+USBH_StatusTypeDef USBH_HID_MouseInit(HID_HandleTypeDef *phost);
+HID_MOUSE_Info_TypeDef *USBH_HID_GetMouseInfo(USBH_HandleTypeDef *phost);
+
+typedef struct
+{
+  uint8_t state;
+  uint8_t lctrl;
+  uint8_t lshift;
+  uint8_t lalt;
+  uint8_t lgui;
+  uint8_t rctrl;
+  uint8_t rshift;
+  uint8_t ralt;
+  uint8_t rgui;
+  uint8_t keys[6];
+}
+HID_KEYBD_Info_TypeDef;
+
+USBH_StatusTypeDef USBH_HID_KeybdInit(HID_HandleTypeDef *phost);
+HID_KEYBD_Info_TypeDef *USBH_HID_GetKeybdInfo(USBH_HandleTypeDef *phost);
+uint8_t USBH_HID_GetASCIICode(HID_KEYBD_Info_TypeDef *info);
+
+
+
+
+HID_HandleTypeDef* USBH_HID_CurrentHandle(USBH_HandleTypeDef *phost);
 USBH_StatusTypeDef USBH_HID_SetReport (USBH_HandleTypeDef *phost,
                                   uint8_t reportType,
                                   uint8_t reportId,
@@ -309,7 +340,7 @@ USBH_StatusTypeDef USBH_HID_SetIdle (USBH_HandleTypeDef *phost,
 USBH_StatusTypeDef USBH_HID_SetProtocol (USBH_HandleTypeDef *phost,
                                       uint8_t protocol);
 
-void USBH_HID_EventCallback(USBH_HandleTypeDef *phost);
+void USBH_HID_EventCallback(USBH_HandleTypeDef *phost,HID_HandleTypeDef* handle);
 
 HID_TypeTypeDef USBH_HID_GetDeviceType(USBH_HandleTypeDef *phost);
 
@@ -324,7 +355,10 @@ uint16_t  fifo_write(FIFO_TypeDef * f, const void * buf, uint16_t  nbytes);
 /**
   * @}
   */ 
+#include "usbh_hid_mouse.h"
+#include "usbh_hid_keybd.h"
 
+// standard hid stuff combinded from mouse and keyboard
 #ifdef __cplusplus
 }
 #endif

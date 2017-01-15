@@ -28,68 +28,6 @@
 #include "usbh_hid_parser.h"
 
 
-/** @addtogroup USBH_LIB
-  * @{
-  */
-
-/** @addtogroup USBH_CLASS
-  * @{
-  */
-
-/** @addtogroup USBH_HID_CLASS
-  * @{
-  */
-  
-/** @defgroup USBH_HID_PARSER 
-  * @brief    This file includes HID parsers for USB Host HID class.
-  * @{
-  */ 
-
-/** @defgroup USBH_HID_PARSER_Private_TypesDefinitions
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_HID_PARSER_Private_Defines
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_HID_PARSER_Private_Macros
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-/** @defgroup USBH_HID_PARSER_Private_FunctionPrototypes
-  * @{
-  */ 
-
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_HID_PARSER_Private_Variables
-  * @{
-  */
-
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_HID_PARSER_Private_Functions
-  * @{
-  */ 
-
 /**
   * @brief  HID_ReadItem 
   *         The function read a report item.

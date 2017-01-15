@@ -173,9 +173,8 @@ static const HID_Report_ItemTypedef prop_y={
   * @param  phost: Host handle
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_HID_MouseInit(USBH_HandleTypeDef *phost)
+USBH_StatusTypeDef USBH_HID_MouseInit(HID_HandleTypeDef *HID_Handle)
 {
-  HID_HandleTypeDef *HID_Handle =  (HID_HandleTypeDef *) phost->pActiveClass->pData;
 
   mouse_info.x=0;
   mouse_info.y=0;
@@ -190,7 +189,7 @@ USBH_StatusTypeDef USBH_HID_MouseInit(USBH_HandleTypeDef *phost)
     HID_Handle->length = sizeof(mouse_report_data);
   }
   HID_Handle->pData = (uint8_t *)mouse_report_data;
-  fifo_init(&HID_Handle->fifo, phost->device.Data, HID_QUEUE_SIZE * sizeof(mouse_report_data));
+  fifo_init(&HID_Handle->fifo, HID_Handle->phost->device.Data, HID_QUEUE_SIZE * sizeof(mouse_report_data));
 
   return USBH_OK;  
 }

@@ -66,6 +66,7 @@
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
 #include "usbh_hid.h"
+#include "usbh_hid_joystick.h"
 #include "usbh_hid_parser.h"
 
 /* USER CODE END Includes */
@@ -151,6 +152,8 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
   case HOST_USER_CONNECTION:
 
 	  printf("USB ---- HOST_USER_CONNECTION\r\n");
+
+
 	  //if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
 	  //		  usb_keyboard_connected = true;
 	  	//	  printf("Keyboard Connected!\r\n");
@@ -210,6 +213,7 @@ void SetupUSB() {
 
 	  /* Add Supported Class */
 	  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
+	  USBH_HID_InstallDriver(USBH_HID_JoystickInit);
 
 	  /* Start Host Process */
 	  USBH_Start(&hUSBHost);
@@ -265,7 +269,7 @@ int main(void)
     BSP_TS_Init(800,480);
     SetupUSB();
     printf("Then printf is setup\r\n");
-   // test_usb_loop();
+    test_usb_loop();
     // ok lets do audio!
     /* Try to Init Audio interface in diffrent config in case of failure */
  //  BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_AUTO, 299, I2S_AUDIOFREQ_48K);
@@ -275,7 +279,7 @@ int main(void)
 
 
  MountSD();
-// test_it();
+ //test_it();
  char* demo_test[] = { "-playdemo", "09EXIT" };
  D_DoomMain (3, demo_test);
  //D_DoomMain (0, NULL);

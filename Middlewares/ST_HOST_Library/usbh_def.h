@@ -455,7 +455,7 @@ typedef struct _USBH_HandleTypeDef
   USBH_CtrlTypeDef      Control;
   USBH_DeviceTypeDef    device;
   USBH_ClassTypeDef*    pClass[USBH_MAX_NUM_SUPPORTED_CLASS];
-  USBH_ClassTypeDef*    pActiveClass;
+  USBH_ClassTypeDef*    pActiveClass; // changed for stupid composite kebyoard/mouse devices
   uint32_t              ClassNumber;
   uint32_t              Pipes[15];
   __IO uint32_t         Timer;

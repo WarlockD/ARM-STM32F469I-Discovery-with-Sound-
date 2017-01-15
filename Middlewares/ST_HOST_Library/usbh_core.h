@@ -100,6 +100,8 @@ USBH_StatusTypeDef  USBH_Init(USBH_HandleTypeDef *phost, void (*pUsrFunc)(USBH_H
 USBH_StatusTypeDef  USBH_DeInit(USBH_HandleTypeDef *phost);
 USBH_StatusTypeDef  USBH_RegisterClass(USBH_HandleTypeDef *phost, USBH_ClassTypeDef *pclass);
 USBH_StatusTypeDef  USBH_SelectInterface(USBH_HandleTypeDef *phost, uint8_t interface);
+void*  USBH_CurrentInterfaceData(USBH_HandleTypeDef *phost);
+
 uint8_t             USBH_FindInterface(USBH_HandleTypeDef *phost, 
                                             uint8_t Class, 
                                             uint8_t SubClass, 
