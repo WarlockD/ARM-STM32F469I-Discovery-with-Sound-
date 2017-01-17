@@ -118,19 +118,10 @@ HID_KEYBD_Info_TypeDef *USBH_GetKeyboardInfo() {
 	if(!usb_keyboard_connected) return NULL;
 	return USBH_HID_GetKeybdInfo(&hUSBHost);
 }
-const char* TypeToText(USBH_HandleTypeDef *phost, HID_TypeTypeDef type) {
-	static char UNKONWN_CHAR[32];
-	switch(type){
-	case HID_MOUSE: return "HID_MOUSE";
-	case HID_KEYBOARD: return "HID_KEYBOARD";
-	default:
-		sprintf(UNKONWN_CHAR,"HID_UNKNOWN(%2.2X)",phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].bInterfaceProtocol);
-		return UNKONWN_CHAR;
-	}
-}
+
 static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
 {
-	  HID_TypeTypeDef type;
+
   switch(id)
   {
   case HOST_USER_SELECT_CONFIGURATION:
@@ -143,9 +134,9 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
     break;
 
   case HOST_USER_CLASS_ACTIVE:
-	  type = USBH_HID_GetDeviceType(phost);
-	  printf("USB ---- HOST_USER_CLASS_ACTIVE(%s)\r\n",TypeToText(phost,type));
-	  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
+
+
+	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
 	  usb_keyboard_connected=true;
     break;
 
@@ -160,9 +151,8 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
 	  	//  }
     break;
   case HOST_USER_CLASS_SELECTED:
-	  type = USBH_HID_GetDeviceType(phost);
-	  printf("USB ---- HOST_USER_CLASS_SELECTED(%s)\r\n",TypeToText(phost,type));
-	  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
+
+	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
 	  break;
   case HOST_USER_UNRECOVERED_ERROR:
   	  printf("USB ---- HOST_USER_UNRECOVERED_ERROR\r\n");
@@ -175,30 +165,6 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
 
 void other_things() {
 	USBH_Process(&hUSBHost);
-}
-void test_usb_loop() {
-	 printf("test_usb_loop starting\r\n");
-	 uint32_t ticks = HAL_GetTick() + 1000;
-	while(1){
-		other_things();
-		if(usb_keyboard_connected){
-			if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
-				HID_KEYBD_Info_TypeDef* usb_key = USBH_GetKeyboardInfo();
-				if(usb_key!=NULL){
-					char c = USBH_HID_GetASCIICode(usb_key);
-					printf("PRESED: '%c'\r\n",c);
-				}
-			}
-		}
-
-
-		uint32_t tt = HAL_GetTick();
-		if(tt > ticks){
-			ticks += 1000;
-			 BSP_LED_Toggle(LED_GREEN);
-		}
-
-	}
 }
 
 void Error_Handler(void);
@@ -219,6 +185,11 @@ void SetupUSB() {
 	  USBH_Start(&hUSBHost);
 	  printf("SetupUSB Finished\r\n");
 
+}
+void testusb() {
+	while(1){
+		refreshUSB();
+	}
 }
 /* USER CODE END 0 */
 
@@ -268,8 +239,9 @@ int main(void)
     BSP_LCD_Clear(LCD_COLOR_BLACK);
     BSP_TS_Init(800,480);
     SetupUSB();
+    testusb() ;
     printf("Then printf is setup\r\n");
-    test_usb_loop();
+   // test_usb_loop();
     // ok lets do audio!
     /* Try to Init Audio interface in diffrent config in case of failure */
  //  BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_AUTO, 299, I2S_AUDIOFREQ_48K);

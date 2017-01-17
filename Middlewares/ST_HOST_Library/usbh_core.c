@@ -100,11 +100,11 @@ USBH_StatusTypeDef  USBH_Init(USBH_HandleTypeDef *phost, void (*pUsrFunc)(USBH_H
   
   /* Set DRiver ID */
   phost->id = id;
-  
+
   /* Unlink class*/
   phost->pActiveClass = NULL;
   phost->ClassNumber = 0;
-  
+
   /* Restore default states and prepare EP0 */ 
   DeInitStateMachine(phost);
   
@@ -185,7 +185,7 @@ static USBH_StatusTypeDef  DeInitStateMachine(USBH_HandleTypeDef *phost)
   
   phost->device.address = USBH_ADDRESS_DEFAULT;
   phost->device.speed   = USBH_SPEED_FULL;
-  
+
   return USBH_OK;
 }
 
@@ -260,7 +260,7 @@ USBH_StatusTypeDef USBH_SelectInterface(USBH_HandleTypeDef *phost, uint8_t inter
   */
 uint8_t USBH_GetActiveClass(USBH_HandleTypeDef *phost)
 {
-   return (phost->device.CfgDesc.Itf_Desc[0].bInterfaceClass);            
+   return (phost->device.CfgDesc.Itf_Desc[0].bInterfaceClass);
 }
 /**
   * @brief  USBH_FindInterface 

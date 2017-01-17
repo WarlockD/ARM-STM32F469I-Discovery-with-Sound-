@@ -35,7 +35,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_core.h"
-
+#include "usbh_fifo.h"
+#include "usbh_hid_parser.h"
 /** @addtogroup USBH_CLASS
   * @{
   */
@@ -115,6 +116,8 @@ typedef enum
 }
 HID_StateTypeDef;
 
+
+
 typedef enum
 {
   HID_REQ_INIT = 0,
@@ -124,63 +127,7 @@ typedef enum
   HID_REQ_SET_IDLE,
   HID_REQ_SET_PROTOCOL,
   HID_REQ_SET_REPORT,
-
-}
-HID_CtlStateTypeDef;
-
-typedef enum
-{
-  HID_MOUSE    = 0x01,
-  HID_KEYBOARD = 0x02,
-  HID_UNKNOWN = 0xFF,
-}
-HID_TypeTypeDef;
-
-
-typedef  struct  _HID_ReportData 
-{
-    uint8_t   ReportID;    
-    uint8_t   ReportType;  
-    uint16_t  UsagePage;   
-    uint32_t  Usage[HID_MAX_USAGE]; 
-    uint32_t  NbrUsage;                      
-    uint32_t  UsageMin;                      
-    uint32_t  UsageMax;                      
-    int32_t   LogMin;                        
-    int32_t   LogMax;                        
-    int32_t   PhyMin;                        
-    int32_t   PhyMax;                        
-    int32_t   UnitExp;                       
-    uint32_t  Unit;                          
-    uint32_t  ReportSize;                    
-    uint32_t  ReportCnt;                     
-    uint32_t  Flag;                          
-    uint32_t  PhyUsage;                      
-    uint32_t  AppUsage;                      
-    uint32_t  LogUsage;   
-} 
-HID_ReportDataTypeDef;
-
-typedef  struct  _HID_ReportIDTypeDef {
-    uint8_t  Size;         /* Report size return by the device id            */
-    uint8_t  ReportID;     /* Report Id                                      */
-    uint8_t  Type;         /* Report Type (INPUT/OUTPUT/FEATURE)             */
-} HID_ReportIDTypeDef;
-
-typedef struct  _HID_CollectionTypeDef 
-{
-    uint32_t                       Usage;                                               
-    uint8_t                        Type;                                                
-    struct _HID_CollectionTypeDef  *NextPtr;
-} HID_CollectionTypeDef;
-
-                                                                               
-typedef  struct  _HID_AppCollectionTypeDef {
-    uint32_t               Usage;                                                
-    uint8_t                Type;                                                 
-    uint8_t                NbrReportFmt;                                         
-    HID_ReportDataTypeDef  ReportData[HID_MAX_NBR_REPORT_FMT];               
-} HID_AppCollectionTypeDef;
+} HID_CtlStateTypeDef;
 
 
 typedef struct _HIDDescriptor
@@ -190,26 +137,23 @@ typedef struct _HIDDescriptor
   uint16_t  bcdHID;               	/* indicates what endpoint this descriptor is describing */
   uint8_t   bCountryCode;        	/* specifies the transfer type. */
   uint8_t   bNumDescriptors;     	/* specifies the transfer type. */
-  uint8_t   bReportDescriptorType;    /* Maximum Packet Size this endpoint is capable of sending or receiving */  
+  uint8_t   bReportDescriptorType;    /* Maximum Packet Size this endpoint is capable of sending or receiving */
   uint16_t  wItemLength;          	/* is used to specify the polling interval of certain transfers. */
 }
 HID_DescTypeDef;
 
 
-typedef struct 
-{
-     uint8_t  *buf;
-     uint16_t  head;
-     uint16_t tail;
-     uint16_t size;
-     uint8_t  lock;
-} FIFO_TypeDef;
+
 struct _HID_Process;
 typedef USBH_StatusTypeDef  ( * HID_Callback)(struct _HID_Process*);
-/* Structure for HID process */
+typedef USBH_StatusTypeDef  ( * HID_CallbackDriver)(struct _HID_Process*,const uint8_t* hid_report);
+
+
+
 typedef struct _HID_Process
 {
-  USBH_HandleTypeDef *phost;
+  USBH_HandleTypeDef   	*phost;
+  HID_ReportItemCollectionTypeDef* 	HIDReport;
   uint8_t			   Interface;
   uint8_t              OutPipe; 
   uint8_t              InPipe; 
@@ -217,26 +161,28 @@ typedef struct _HID_Process
   uint8_t              OutEp;
   uint8_t              InEp;
   HID_CtlStateTypeDef  ctl_state;
+  uint32_t		       ctl_value; // used for state
   FIFO_TypeDef         fifo; 
-  uint8_t              *pData;   
+  uint8_t              *pData;
   uint16_t             length;
   uint8_t              ep_addr;
   uint16_t             poll; 
   uint32_t             timer;
   uint8_t              DataReady;
-  HID_DescTypeDef      HID_Desc;  
+  HID_DescTypeDef      HID_Desc;
   void*				   DriverUserData;
-  HID_Callback			Init;
   //USBH_StatusTypeDef  ( * Init)(struct _HID_Process*);
-  HID_Callback  Callback;
-  HID_Callback  Process;
+  HID_Callback  Init;
   HID_Callback  DeInit;
+  HID_Callback  InterruptReceiveCallback; // Must have this
+  HID_Callback  IdleProcess; // Don't NEED this, be sure to do Set Idle
+
 } HID_HandleTypeDef;
 // install a driver
 // once its installed it will be called once we get the
 // report discriptor so you can parse and check that
 // return OK if the driver is insalled or fail otherwise
-USBH_StatusTypeDef USBH_HID_InstallDriver(HID_Callback init);
+USBH_StatusTypeDef USBH_HID_InstallDriver(HID_CallbackDriver init);
 /**
   * @}
   */ 
@@ -328,10 +274,10 @@ USBH_StatusTypeDef USBH_HID_GetReport (USBH_HandleTypeDef *phost,
                                   uint8_t reportLen);  
 
 USBH_StatusTypeDef USBH_HID_GetHIDReportDescriptor (USBH_HandleTypeDef *phost,  
-                                            uint16_t length);
+		 uint16_t interface, uint16_t length);
 
 USBH_StatusTypeDef USBH_HID_GetHIDDescriptor (USBH_HandleTypeDef *phost,  
-                                            uint16_t length);
+                                            uint16_t interface, uint16_t length);
 
 USBH_StatusTypeDef USBH_HID_SetIdle (USBH_HandleTypeDef *phost,
                                   uint8_t duration,
@@ -342,15 +288,10 @@ USBH_StatusTypeDef USBH_HID_SetProtocol (USBH_HandleTypeDef *phost,
 
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost,HID_HandleTypeDef* handle);
 
-HID_TypeTypeDef USBH_HID_GetDeviceType(USBH_HandleTypeDef *phost);
+
 
 uint8_t USBH_HID_GetPollInterval(USBH_HandleTypeDef *phost);
 
-void fifo_init(FIFO_TypeDef * f, uint8_t * buf, uint16_t size);
-
-uint16_t  fifo_read(FIFO_TypeDef * f, void * buf, uint16_t  nbytes);
-
-uint16_t  fifo_write(FIFO_TypeDef * f, const void * buf, uint16_t  nbytes);
 
 /**
   * @}
