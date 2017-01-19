@@ -106,11 +106,9 @@ USBH_StatusTypeDef USBH_GetDescriptor(USBH_HandleTypeDef *phost,
 USBH_StatusTypeDef USBH_Get_DevDesc(USBH_HandleTypeDef *phost,
                              uint8_t length);
 
-USBH_StatusTypeDef USBH_Get_StringDesc(USBH_HandleTypeDef *phost,                              
-                                uint8_t string_index, 
-                                uint8_t *buff, 
-                                uint16_t length);
 
+USBH_StatusTypeDef USBH_Get_StringDesc(USBH_HandleTypeDef *phost,
+                                uint8_t string_index, USBH_DescStringCacheTypeDef** str);
 USBH_StatusTypeDef USBH_SetCfg(USBH_HandleTypeDef *phost, 
                         uint16_t configuration_value);
 
@@ -126,7 +124,7 @@ USBH_StatusTypeDef USBH_SetInterface(USBH_HandleTypeDef *phost,
 USBH_StatusTypeDef USBH_ClrFeature(USBH_HandleTypeDef *phost, 
                                    uint8_t ep_num);
 
-USBH_DescHeader_t      *USBH_GetNextDesc (uint8_t   *pbuf, 
+USBH_DescHeaderTypeDef     *USBH_GetNextDesc (uint8_t   *pbuf,
                                                   uint16_t  *ptr);
 /**
   * @}

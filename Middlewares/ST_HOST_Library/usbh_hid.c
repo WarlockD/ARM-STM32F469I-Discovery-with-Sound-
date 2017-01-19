@@ -121,11 +121,11 @@ const char* pDescriptorType(uint8_t x)
 		return tbl[x];;
 	}
 }
-static void USBH_Print_HID_USBH_USBH_DescHeader_t(int ident, USBH_DescHeader_t* head){
+static void USBH_Print_HID_USBH_USBH_DescHeader_t(int ident, USBH_DescHeaderTypeDef* head){
 	IdentLine(ident,"bDescriptorType(%s)=%i bLength=%i",pDescriptorType(head->bDescriptorType),(int)head->bDescriptorType,(int)head->bLength);
 }
 static void USBH_Print_HID_DevDescTypeDef(int ident, USBH_DevDescTypeDef* dev){
-	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeader_t*)dev);
+	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeaderTypeDef*)dev);
 	IdentLine(ident,"bcdUSB=%4.4X",dev->bcdUSB );
 	IdentLine(ident,"bDeviceClass=%2.2X",(int)dev->bDeviceClass);
 	IdentLine(ident,"bDeviceSubClass=%2.2X",(int)dev->bDeviceSubClass);
@@ -142,7 +142,7 @@ static void USBH_Print_HID_DevDescTypeDef(int ident, USBH_DevDescTypeDef* dev){
 
 
 static void USBH_Print_HID_DescTypeDef(int ident, HID_DescTypeDef* def){
-	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeader_t*)def);
+	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeaderTypeDef*)def);
 	IdentLine(ident,"bcdHID=%X.%X",def->bcdHID >> 4,def->bcdHID &0xF );
 	IdentLine(ident,"bCountryCode=%i",(int)def->bCountryCode);
 	IdentLine(ident,"bNumDescriptors=%i",(int)def->bNumDescriptors);
@@ -255,7 +255,7 @@ static const char* EndpointAttributeToString(uint8_t bmAttributes) {
 	return NULL; // can't get here
 }
 static void USBH_Print_HID_EpDescTypeDef(int ident, USBH_EpDescTypeDef* def){
-	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeader_t*)def);
+	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeaderTypeDef*)def);
 	const char* str;
 	if (def->bEndpointAddress != 0){
 		if((def->bEndpointAddress & 0x80) != 0) str = "IN/D2H"; else str = "OUT/H2D";
@@ -269,7 +269,7 @@ static void USBH_Print_HID_EpDescTypeDef(int ident, USBH_EpDescTypeDef* def){
 
 static void USBH_Print_HID_InterfaceDescTypeDef(int ident, USBH_InterfaceDescTypeDef* def){
 	const char* str;
-	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeader_t*)def);
+	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeaderTypeDef*)def);
 	IdentLine(ident,"bInterfaceNumber=%i",(int)def->bInterfaceNumber);
 	IdentLine(ident,"bNumEndpoints=%i",(int)def->bNumEndpoints);
 	str = pDeviceClass(def->bInterfaceClass);
@@ -288,7 +288,7 @@ static void USBH_Print_HID_InterfaceDescTypeDef(int ident, USBH_InterfaceDescTyp
 		USBH_Print_HID_EpDescTypeDef(ident,&def->Ep_Desc[i]);
 }
 static void USBH_Print_HID_CfgDescTypeDef(int ident, USBH_CfgDescTypeDef* def){
-	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeader_t*)def);
+	USBH_Print_HID_USBH_USBH_DescHeader_t(ident++,(USBH_DescHeaderTypeDef*)def);
 	IdentLine(ident,"wTotalLength=%i",(int)def->wTotalLength);
 	IdentLine(ident,"bNumInterfaces=%i",(int)def->bNumInterfaces);
 	IdentLine(ident,"bConfigurationValue=%i",(int)def->bConfigurationValue);
@@ -304,8 +304,8 @@ static void USBH_Print_HID_USBH_USBH_DeviceTypeDef(int ident, USBH_DeviceTypeDef
 	IdentLine(ident,"speed=%i",(int)dev->speed);
 	IdentLine(ident,"is_connected=%i",(int)dev->is_connected);
 	IdentLine(ident,"current_interface=%i",(int)dev->current_interface);
-	USBH_Print_HID_DevDescTypeDef(ident, &dev->DevDesc);
-	USBH_Print_HID_CfgDescTypeDef(ident, &dev->CfgDesc);
+	USBH_Print_HID_DevDescTypeDef(ident, dev->DevDesc);
+	USBH_Print_HID_CfgDescTypeDef(ident, dev->CfgDesc);
 }
 
 HID_HandleTypeDef* USBH_HID_CurrentHandle(USBH_HandleTypeDef *phost){
@@ -329,14 +329,14 @@ static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
 {	
 	USBH_StatusTypeDef status = USBH_FAIL ;
 	HID_HandleTypeDef* HID_Handles = NULL;
-	uint8_t max_interfaces = phost->device.CfgDesc.bNumInterfaces;
+	uint8_t max_interfaces = phost->device.CfgDesc->bNumInterfaces;
 	uint32_t total_handle_size = max_interfaces * sizeof(USBH_HandleTypeDef);
 	USBH_UsrLog("This device has %i Interfaces" ,max_interfaces);
 	for(uint32_t interface = 0; interface < max_interfaces;interface++){
-		uint8_t max_ep = phost->device.CfgDesc.Itf_Desc[interface].bNumEndpoints;
+		uint8_t max_ep = phost->device.CfgDesc->Itf_Desc[interface].bNumEndpoints;
 		uint32_t max_packet_size=0;
 		for(uint32_t i=0;i < max_ep;i++){
-			uint32_t l = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+			uint32_t l = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
 			if(l > max_packet_size) max_packet_size=l;
 		}
 		total_handle_size+=max_packet_size; // for the sending buffer
@@ -354,9 +354,9 @@ static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
   		HID_Handle->Interface = interface;
   		HID_Handle->state     = HID_INIT;
   		HID_Handle->ctl_state = HID_REQ_INIT;
-  		HID_Handle->ep_addr   = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
-  		HID_Handle->length    = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
-  		HID_Handle->poll      = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bInterval ;
+  		HID_Handle->ep_addr   = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
+  		HID_Handle->length    = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+  		HID_Handle->poll      = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bInterval ;
   		HID_Handle->pData	  = buffer; // this is the current packet data, copied to the fifo
   		buffer+= (HID_Handle->length); // move ot the next interface buffer
   		// init the fifo here since all the driveers use it
@@ -365,17 +365,17 @@ static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
   		/* Check fo available number of endpoints */
   		/* Find the number of EPs in the Interface Descriptor */
   		/* Choose the lower number in order not to overrun the buffer allocated */
-  		uint8_t max_ep = ( (phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].bNumEndpoints <= USBH_MAX_NUM_ENDPOINTS) ?
-  				  phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].bNumEndpoints :
+  		uint8_t max_ep = ( (phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].bNumEndpoints <= USBH_MAX_NUM_ENDPOINTS) ?
+  				  phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].bNumEndpoints :
   					  USBH_MAX_NUM_ENDPOINTS);
 
 
   		/* Decode endpoint IN and OUT address from interface descriptor */
   		for (uint32_t num=0 ;num < max_ep; num++)
   		{
-  		if(phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress & 0x80)
+  		if(phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress & 0x80)
   		{
-  			HID_Handle->InEp = (phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress);
+  			HID_Handle->InEp = (phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress);
   			HID_Handle->InPipe  = USBH_AllocPipe(phost, HID_Handle->InEp);
 
   			/* Open pipe for IN endpoint */
@@ -392,7 +392,7 @@ static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
   		}
   		else
   		{
-  			HID_Handle->OutEp = (phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress);
+  			HID_Handle->OutEp = (phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].Ep_Desc[num].bEndpointAddress);
   			HID_Handle->OutPipe  =USBH_AllocPipe(phost, HID_Handle->OutEp);
 
   			/* Open pipe for OUT endpoint */
@@ -425,7 +425,7 @@ static USBH_StatusTypeDef USBH_HID_InterfaceDeInit (USBH_HandleTypeDef *phost )
 {	
 	HID_HandleTypeDef *HID_Handles = (HID_HandleTypeDef *) phost->pActiveClass->pData;
 	if(HID_Handles == NULL) return USBH_FAIL;
-	for(uint32_t interface=0; interface < phost->device.CfgDesc.bNumInterfaces;interface++) {
+	for(uint32_t interface=0; interface < phost->device.CfgDesc->bNumInterfaces;interface++) {
 	  // USBH_SelectInterface (phost, interface); NO REASON TO CALL THIS EXCEPT TO PRINT DEBUG INFO
 	  HID_HandleTypeDef *HID_Handle =  &HID_Handles[interface];
 	  if(HID_Handle->InPipe != 0x00)
@@ -544,7 +544,7 @@ USBH_StatusTypeDef USBH_HID_ClassRequest(USBH_HandleTypeDef *phost)
   }
   status = USBH_HID_ClassInterfaceRequest(phost,phost->device.current_interface);
   if(status != USBH_BUSY){
-	  if(phost->device.current_interface < phost->device.CfgDesc.bNumInterfaces){
+	  if(phost->device.current_interface < phost->device.CfgDesc->bNumInterfaces){
 		  USBH_SelectInterface(phost,phost->device.current_interface+1);
 		  status = USBH_BUSY;
 	  }else {
@@ -631,7 +631,7 @@ static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost)
 
   USBH_StatusTypeDef status = USBH_OK;
   HID_HandleTypeDef *HID_Handles =  (HID_HandleTypeDef *) phost->pActiveClass->pData;
-  for(uint8_t interface=0; interface < phost->device.CfgDesc.bNumInterfaces;interface++) {
+  for(uint8_t interface=0; interface < phost->device.CfgDesc->bNumInterfaces;interface++) {
 	  HID_HandleTypeDef *HID_Handle =  &HID_Handles[interface];
 	 // if(HID_Handle->Process)
 		//  status = HID_Handle->Process(HID_Handle);
@@ -651,7 +651,7 @@ static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost)
 static USBH_StatusTypeDef USBH_HID_SOFProcess(USBH_HandleTypeDef *phost)
 {
 	HID_HandleTypeDef *HID_Handles =  (HID_HandleTypeDef *)phost->pActiveClass->pData;
-	for(uint8_t interface=0; interface < phost->device.CfgDesc.bNumInterfaces;interface++) {
+	for(uint8_t interface=0; interface < phost->device.CfgDesc->bNumInterfaces;interface++) {
 	  HID_HandleTypeDef *HID_Handle =  &HID_Handles[interface];
 	  if(HID_Handle->state == HID_POLL)
 	  {

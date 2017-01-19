@@ -231,13 +231,17 @@ typedef  struct  _DescHeader
 {
     uint8_t  bLength;       
     uint8_t  bDescriptorType;
-} 
-USBH_DescHeader_t;
+}  USBH_DescHeaderTypeDef;
+
+typedef struct _DescStringCache {
+	uint8_t bLength;
+	uint8_t bIndex;
+	char strData[1];
+}USBH_DescStringCacheTypeDef;
 
 typedef struct _DeviceDescriptor
 {
-  uint8_t   bLength;
-  uint8_t   bDescriptorType;
+	USBH_DescHeaderTypeDef Header;
   uint16_t  bcdUSB;        /* USB Specification Number which device complies too */
   uint8_t   bDeviceClass;
   uint8_t   bDeviceSubClass; 
@@ -253,24 +257,20 @@ typedef struct _DeviceDescriptor
   uint8_t   iProduct;       /* Index of Product String Descriptor */
   uint8_t   iSerialNumber;  /* Index of Serial Number String Descriptor */
   uint8_t   bNumConfigurations; /* Number of Possible Configurations */
-}
-USBH_DevDescTypeDef;
+} USBH_DevDescTypeDef;
 
 typedef struct _EndpointDescriptor
 {
-  uint8_t   bLength;
-  uint8_t   bDescriptorType;
+	USBH_DescHeaderTypeDef Header;
   uint8_t   bEndpointAddress;   /* indicates what endpoint this descriptor is describing */
   uint8_t   bmAttributes;       /* specifies the transfer type. */
   uint16_t  wMaxPacketSize;    /* Maximum Packet Size this endpoint is capable of sending or receiving */  
   uint8_t   bInterval;          /* is used to specify the polling interval of certain transfers. */
-}
-USBH_EpDescTypeDef;
+} USBH_EpDescTypeDef;
 
 typedef struct _InterfaceDescriptor
 {
-  uint8_t bLength;
-  uint8_t bDescriptorType;
+	USBH_DescHeaderTypeDef Header;
   uint8_t bInterfaceNumber;
   uint8_t bAlternateSetting;    /* Value used to select alternative setting */
   uint8_t bNumEndpoints;        /* Number of Endpoints used for this interface */
@@ -278,24 +278,21 @@ typedef struct _InterfaceDescriptor
   uint8_t bInterfaceSubClass;   /* Subclass Code (Assigned by USB Org) */
   uint8_t bInterfaceProtocol;   /* Protocol Code */
   uint8_t iInterface;           /* Index of String Descriptor Describing this interface */
-  USBH_EpDescTypeDef               Ep_Desc[USBH_MAX_NUM_ENDPOINTS];   
-}
-USBH_InterfaceDescTypeDef;
+  USBH_EpDescTypeDef               Ep_Desc[1];
+} USBH_InterfaceDescTypeDef;
 
 
 typedef struct _ConfigurationDescriptor
 {
-  uint8_t   bLength;
-  uint8_t   bDescriptorType;
+	USBH_DescHeaderTypeDef Header;
   uint16_t  wTotalLength;        /* Total Length of Data Returned */
   uint8_t   bNumInterfaces;       /* Number of Interfaces */
   uint8_t   bConfigurationValue;  /* Value to use as an argument to select this configuration*/
   uint8_t   iConfiguration;       /*Index of String Descriptor Describing this configuration */
   uint8_t   bmAttributes;         /* D7 Bus Powered , D6 Self Powered, D5 Remote Wakeup , D4..0 Reserved (0)*/
   uint8_t   bMaxPower;            /*Maximum Power Consumption */
-  USBH_InterfaceDescTypeDef        Itf_Desc[USBH_MAX_NUM_INTERFACES];
-}
-USBH_CfgDescTypeDef;
+  USBH_InterfaceDescTypeDef        Itf_Desc[1];
+} USBH_CfgDescTypeDef;
 
 
 /* Following USB Host status */
@@ -325,69 +322,61 @@ typedef enum
 /* Following states are used for gState */
 typedef enum 
 {
-  HOST_IDLE =0,
-  HOST_DEV_WAIT_FOR_ATTACHMENT,  
-  HOST_DEV_ATTACHED,
-  HOST_DEV_DISCONNECTED,  
-  HOST_DETECT_DEVICE_SPEED,
-  HOST_ENUMERATION,
-  HOST_CLASS_REQUEST,  
-  HOST_INPUT,
-  HOST_SET_CONFIGURATION,
-  HOST_CHECK_CLASS,
-  HOST_CLASS,
-  HOST_SUSPENDED,
-  HOST_ABORT_STATE,  
+	UTILITY_GET_STRING_DISCRIPTOR=-5,
+	UTILITY_GET_DISCRIPTOR=-4,
+	UTILITY_PUSH_STATE= -3,
+	UTILITY_POP_STATE = -2,
+	ERROR_STATE = -1,
+	HOST_INIT =0,
+	HOST_IDLE,
+	HOST_DEV_WAIT_FOR_ATTACHMENT,
+	HOST_DEV_ATTACHED,
+	HOST_DEV_DISCONNECTED,
+	HOST_DETECT_DEVICE_SPEED,
+	HOST_ENUMERATION,
+	HOST_ENUMERATION_FINISHED,
+	HOST_CLASS_REQUEST,
+	HOST_INPUT,
+	HOST_SET_CONFIGURATION,
+	HOST_CHECK_CLASS,
+	HOST_CLASS,
+	HOST_SUSPENDED,
+	HOST_ABORT_STATE,
+	ENUM_IDLE,
+	ENUM_GET_FULL_DEV_DESC,
+	ENUM_SET_ADDR,
+	ENUM_GET_CFG_DESC,
+	ENUM_GET_FULL_CFG_DESC,
+	ENUM_GET_MFC_STRING_DESC,
+	ENUM_GET_PRODUCT_STRING_DESC,
+	ENUM_GET_SERIALNUM_STRING_DESC,
+	CTRL_IDLE,
+	CTRL_SETUP,
+	CTRL_SETUP_WAIT,
+	CTRL_DATA_IN,
+	CTRL_DATA_IN_WAIT,
+	CTRL_DATA_OUT,
+	CTRL_DATA_OUT_WAIT,
+	CTRL_STATUS_IN,
+	CTRL_STATUS_IN_WAIT,
+	CTRL_STATUS_OUT,
+	CTRL_STATUS_OUT_WAIT,
+	CTRL_ERROR,
+	CTRL_STALLED,
+	CTRL_COMPLETE,
+	CMD_IDLE,
+	CMD_SEND,
+	CMD_WAIT,
 }HOST_StateTypeDef;  
 
-/* Following states are used for EnumerationState */
-typedef enum 
-{
-  ENUM_IDLE = 0,
-  ENUM_GET_FULL_DEV_DESC,
-  ENUM_SET_ADDR,
-  ENUM_GET_CFG_DESC,
-  ENUM_GET_FULL_CFG_DESC,
-  ENUM_GET_MFC_STRING_DESC,
-  ENUM_GET_PRODUCT_STRING_DESC,
-  ENUM_GET_SERIALNUM_STRING_DESC,
-} ENUM_StateTypeDef;  
-
-/* Following states are used for CtrlXferStateMachine */
-typedef enum 
-{
-  CTRL_IDLE =0,
-  CTRL_SETUP,
-  CTRL_SETUP_WAIT,
-  CTRL_DATA_IN,
-  CTRL_DATA_IN_WAIT,
-  CTRL_DATA_OUT,
-  CTRL_DATA_OUT_WAIT,
-  CTRL_STATUS_IN,
-  CTRL_STATUS_IN_WAIT,
-  CTRL_STATUS_OUT,
-  CTRL_STATUS_OUT_WAIT,
-  CTRL_ERROR,
-  CTRL_STALLED,
-  CTRL_COMPLETE    
-}CTRL_StateTypeDef;  
-
-
-/* Following states are used for RequestState */
-typedef enum 
-{
-  CMD_IDLE =0,
-  CMD_SEND,
-  CMD_WAIT
-} CMD_StateTypeDef;  
-
 typedef enum {
-  USBH_URB_IDLE = 0,
-  USBH_URB_DONE,
-  USBH_URB_NOTREADY,
-  USBH_URB_NYET,  
-  USBH_URB_ERROR,
-  USBH_URB_STALL
+	USBH_URB_IDLE=0,
+		USBH_URB_DONE,
+		USBH_URB_NOTREADY,
+		USBH_URB_NYET,
+		USBH_URB_ERROR,
+		USBH_URB_STALL,
+		USBH_STATE_MAX
 }USBH_URBStateTypeDef;
 
 typedef enum
@@ -400,6 +389,7 @@ typedef enum
 }
 USBH_OSEventTypeDef;
 
+
 /* Control request structure */
 typedef struct 
 {
@@ -410,25 +400,29 @@ typedef struct
   uint16_t              length;
   uint16_t              timer;  
   USB_Setup_TypeDef     setup;
-  CTRL_StateTypeDef     state;  
+  HOST_StateTypeDef     state;
   uint8_t               errorcount;  
 
 } USBH_CtrlTypeDef;
 
+
+
+
 /* Attached device structure */
 typedef struct
 {
-#if (USBH_KEEP_CFG_DESCRIPTOR == 1)  
-  uint8_t                           CfgDesc_Raw[USBH_MAX_SIZE_CONFIGURATION];
-#endif  
-  uint8_t                           Data[USBH_MAX_DATA_BUFFER];
-  uint8_t                           address;
-  uint8_t                           speed;
-  __IO uint8_t                      is_connected;    
-  uint8_t                           current_interface;   
-  USBH_DevDescTypeDef               DevDesc;
-  USBH_CfgDescTypeDef               CfgDesc; 
-  
+	uint8_t                           Data[USBH_MAX_DATA_BUFFER];
+	uint8_t                           DescData[USBH_MAX_DATA_BUFFER];
+	uint16_t					      DescDataUsed;
+	// the two below are stored in CfgDesc_Raw lineraly.
+	USBH_DevDescTypeDef*              DevDesc;
+	USBH_CfgDescTypeDef*              CfgDesc;
+	USBH_DescStringCacheTypeDef*	  StringDesc;// cache of strings, linked list
+	uint8_t							  configuration;
+	uint8_t                           address;
+	uint8_t                           speed;
+	__IO uint8_t                      is_connected;
+	uint8_t                           current_interface;
 }USBH_DeviceTypeDef;
 
 struct _USBH_HandleTypeDef;
@@ -442,27 +436,57 @@ typedef struct
   USBH_StatusTypeDef  (*DeInit)      (struct _USBH_HandleTypeDef *phost);
   USBH_StatusTypeDef  (*Requests)    (struct _USBH_HandleTypeDef *phost);  
   USBH_StatusTypeDef  (*BgndProcess) (struct _USBH_HandleTypeDef *phost);
-  USBH_StatusTypeDef  (*SOFProcess) (struct _USBH_HandleTypeDef *phost);  
+  USBH_StatusTypeDef  (*SOFProcess)  (struct _USBH_HandleTypeDef *phost);
   void*                pData;
 } USBH_ClassTypeDef;
+
+struct _USBH_HandleTypeDef;
+typedef int USBH_MStateTypeDef;
+#define MAX_STATE_STACK 10
+
+typedef enum {
+	USBH_STATE_OK,
+	USBH_STATE_BUSY,
+	USBH_STATE_FAIL,
+	USBH_STATE_PUSH,
+	USBH_STATE_POP,
+}USBH_StateStatusTypeDef;
+
+typedef	USBH_StateStatusTypeDef (* USBH_CallbackTypeDef )(struct _USBH_HandleTypeDef *pHandle);
+typedef struct {
+	HOST_StateTypeDef 		State;
+	USBH_CallbackTypeDef	Process;
+} USBH_StateInfoTypeDef;
+
 
 /* USB Host handle structure */
 typedef struct _USBH_HandleTypeDef
 {
-  __IO HOST_StateTypeDef     gState;       /*  Host State Machine Value */
-  ENUM_StateTypeDef     EnumState;    /* Enumeration state Machine */
-  CMD_StateTypeDef      RequestState;       
-  USBH_CtrlTypeDef      Control;
-  USBH_DeviceTypeDef    device;
-  USBH_ClassTypeDef*    pClass[USBH_MAX_NUM_SUPPORTED_CLASS];
-  USBH_ClassTypeDef*    pActiveClass; // changed for stupid composite kebyoard/mouse devices
-  uint32_t              ClassNumber;
-  uint32_t              Pipes[15];
-  __IO uint32_t         Timer;
-  uint8_t               id;
-  void*                 pData;
-  void                 (* pUser )(struct _USBH_HandleTypeDef *pHandle, uint8_t id);
-  
+  __IO HOST_StateTypeDef    gPrevState;       /*  Host State Machine Value */
+  __IO HOST_StateTypeDef    gState;       /*  Host State Machine Value */
+  HOST_StateTypeDef		    StateStack[MAX_STATE_STACK];
+  uint8_t					StackSize;
+  union {
+	  int Value;
+	  struct {
+		uint16_t Size;
+		uint8_t* Data;
+	  } ;
+  } StateData;
+  USBH_StateInfoTypeDef		*Current;
+  USBH_CallbackTypeDef		Process;
+  uint32_t					StateValue;
+  HOST_StateTypeDef      	RequestState;
+  USBH_CtrlTypeDef      	Control;
+  USBH_DeviceTypeDef    	device;
+  USBH_ClassTypeDef*    	pClass[USBH_MAX_NUM_SUPPORTED_CLASS];
+  USBH_ClassTypeDef*    	pActiveClass; // changed for stupid composite kebyoard/mouse devices
+  uint32_t              	ClassNumber;
+  uint32_t              	Pipes[15];
+  __IO uint32_t         	Timer;
+  uint8_t               	id;
+  void*                 	pData;
+  void                		(* pUser )(struct _USBH_HandleTypeDef *pHandle, uint8_t id);
 #if (USBH_USE_OS == 1)
   osMessageQId          os_event;   
   osThreadId            thread; 

@@ -85,7 +85,7 @@
 #if (USBH_DEBUG_LEVEL > 0)
 #define USBH_UsrLog(...)   printf("USB_USER: ");\
 						   printf(__VA_ARGS__);\
-                           printf("\n");
+                           printf("\r\n");
 #else
 #define USBH_UsrLog(...)   
 #endif 
@@ -95,7 +95,7 @@
 
 #define USBH_ErrLog(...)   printf("USB_ERROR: ") ;\
                            printf(__VA_ARGS__);\
-                           printf("\n");
+                           printf("\r\n");
 #else
 #define USBH_ErrLog(...)   
 #endif 
@@ -103,7 +103,7 @@
 #if (USBH_DEBUG_LEVEL > 2)                         
 #define USBH_DbgLog(...)   printf("USB_DEBUG : ") ;\
                            printf(__VA_ARGS__);\
-                           printf("\n");
+                           printf("\r\n");
 #else
 #define USBH_DbgLog(...)                         
 #endif

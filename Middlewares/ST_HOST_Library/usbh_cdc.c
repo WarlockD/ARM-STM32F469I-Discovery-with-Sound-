@@ -162,7 +162,7 @@ static USBH_StatusTypeDef USBH_CDC_InterfaceInit (USBH_HandleTypeDef *phost)
   
   if(interface == 0xFF) /* No Valid Interface */
   {
-    USBH_DbgLog ("Cannot Find the interface for Communication Interface Class.", phost->pActiveClass->Name);         
+    USBH_DbgLog ("Cannot Find the interface for Communication Interface Class. %s", phost->pActiveClass->Name);
   }
   else
   {
@@ -171,10 +171,10 @@ static USBH_StatusTypeDef USBH_CDC_InterfaceInit (USBH_HandleTypeDef *phost)
     CDC_Handle =  (CDC_HandleTypeDef*) phost->pActiveClass->pData; 
     
     /*Collect the notification endpoint address and length*/
-    if(phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress & 0x80)
+    if(phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress & 0x80)
     {
-      CDC_Handle->CommItf.NotifEp = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
-      CDC_Handle->CommItf.NotifEpSize  = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+      CDC_Handle->CommItf.NotifEp = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
+      CDC_Handle->CommItf.NotifEpSize  = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
     }
     
     /*Allocate the length for host channel number in*/
@@ -198,31 +198,31 @@ static USBH_StatusTypeDef USBH_CDC_InterfaceInit (USBH_HandleTypeDef *phost)
     
     if(interface == 0xFF) /* No Valid Interface */
     {
-      USBH_DbgLog ("Cannot Find the interface for Data Interface Class.", phost->pActiveClass->Name);         
+      USBH_DbgLog ("Cannot Find the interface for Data Interface Class. %s", phost->pActiveClass->Name);
     }
     else
     {    
       /*Collect the class specific endpoint address and length*/
-      if(phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress & 0x80)
+      if(phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress & 0x80)
       {      
-        CDC_Handle->DataItf.InEp = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
-        CDC_Handle->DataItf.InEpSize  = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+        CDC_Handle->DataItf.InEp = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
+        CDC_Handle->DataItf.InEpSize  = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
       }
       else
       {
-        CDC_Handle->DataItf.OutEp = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
-        CDC_Handle->DataItf.OutEpSize  = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
+        CDC_Handle->DataItf.OutEp = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].bEndpointAddress;
+        CDC_Handle->DataItf.OutEpSize  = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[0].wMaxPacketSize;
       }
       
-      if(phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[1].bEndpointAddress & 0x80)
+      if(phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[1].bEndpointAddress & 0x80)
       {      
-        CDC_Handle->DataItf.InEp = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[1].bEndpointAddress;
-        CDC_Handle->DataItf.InEpSize  = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[1].wMaxPacketSize;
+        CDC_Handle->DataItf.InEp = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[1].bEndpointAddress;
+        CDC_Handle->DataItf.InEpSize  = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[1].wMaxPacketSize;
       }
       else
       {
-        CDC_Handle->DataItf.OutEp = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[1].bEndpointAddress;
-        CDC_Handle->DataItf.OutEpSize  = phost->device.CfgDesc.Itf_Desc[interface].Ep_Desc[1].wMaxPacketSize;
+        CDC_Handle->DataItf.OutEp = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[1].bEndpointAddress;
+        CDC_Handle->DataItf.OutEpSize  = phost->device.CfgDesc->Itf_Desc[interface].Ep_Desc[1].wMaxPacketSize;
       }    
       
       /*Allocate the length for host channel number out*/
