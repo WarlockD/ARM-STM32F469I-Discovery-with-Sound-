@@ -85,6 +85,7 @@ typedef enum {
 } t_uart_mode;
 
 void uart_puti(unsigned long value, int width, t_uart_mode mode);
+void uart_print(const char* fmt,...);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

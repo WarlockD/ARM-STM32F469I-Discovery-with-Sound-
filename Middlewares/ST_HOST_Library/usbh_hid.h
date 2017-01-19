@@ -105,12 +105,12 @@
 /* States for HID State Machine */
 typedef enum
 {
-  HID_INIT= 0,  
+  HID_INIT= 0,
   HID_IDLE,
   HID_SEND_DATA,
   HID_BUSY,
-  HID_GET_DATA,   
-  HID_SYNC,     
+  HID_GET_DATA,
+  HID_SYNC,
   HID_POLL,
   HID_ERROR,
 }
@@ -121,7 +121,7 @@ HID_StateTypeDef;
 typedef enum
 {
   HID_REQ_INIT = 0,
-  HID_REQ_IDLE, 
+  HID_REQ_IDLE,
   HID_REQ_GET_REPORT_DESC,
   HID_REQ_GET_HID_DESC,
   HID_REQ_SET_IDLE,

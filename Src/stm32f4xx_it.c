@@ -196,10 +196,15 @@ void LTDC_IRQHandler(void)
 void DMA2D_IRQHandler(void) {
 	HAL_DMA2D_IRQHandler(&hdma2d_eval);
 }
+void OTG_HS_IRQHandler(){
+	HAL_HCD_IRQHandler(&hhcd);
+}
 void OTG_FS_IRQHandler(void)
 {
   HAL_HCD_IRQHandler(&hhcd);
 }
-
+void OTG_FS_WKUP_IRQHandler(){
+	 HAL_HCD_IRQHandler(&hhcd);
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

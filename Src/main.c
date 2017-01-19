@@ -125,24 +125,24 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
   switch(id)
   {
   case HOST_USER_SELECT_CONFIGURATION:
-	  printf("USB ---- HOST_USER_SELECT_CONFIGURATION\n");
+	//  printf("USB ---- HOST_USER_SELECT_CONFIGURATION\n");
     break;
 
   case HOST_USER_DISCONNECTION:
-	  usb_keyboard_connected = false;
-	  printf("USB ---- APPLICATION_DISCONNECT\n");
+	//  usb_keyboard_connected = false;
+	//  printf("USB ---- APPLICATION_DISCONNECT\n");
     break;
 
   case HOST_USER_CLASS_ACTIVE:
 
 
 	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
-	  usb_keyboard_connected=true;
+	//  usb_keyboard_connected=true;
     break;
 
   case HOST_USER_CONNECTION:
 
-	  printf("USB ---- HOST_USER_CONNECTION\r\n");
+	 // printf("USB ---- HOST_USER_CONNECTION\r\n");
 
 
 	  //if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
@@ -155,10 +155,10 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
 	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
 	  break;
   case HOST_USER_UNRECOVERED_ERROR:
-  	  printf("USB ---- HOST_USER_UNRECOVERED_ERROR\r\n");
+  	 // printf("USB ---- HOST_USER_UNRECOVERED_ERROR\r\n");
   	  break;
   default:
-	  printf("USB ---- UNKNOWN\n");
+	//  printf("USB ---- UNKNOWN\n");
     break;
   }
 }
@@ -173,9 +173,13 @@ void refreshUSB() {
     USBH_Process(&hUSBHost);
 }
 void SetupUSB() {
+	// be sure to kill the power FIRST in case of a reset so the usb device can be reset
+	//  USBH_LL_DriverVBUS (&hUSBHost, FALSE);;
+	//  HAL_Delay(1000);
 	 /* Init HID Application */
 	  /* Init Host Library */
 	  USBH_Init(&hUSBHost, USBH_UserProcess, 0);
+	  USBH_Stop(&hUSBHost); // reset in case of shut down
 
 	  /* Add Supported Class */
 	  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
@@ -493,11 +497,14 @@ void Error_Handler(void)
    * @param line: assert_param error line source number
    * @retval None
    */
+void __assert_func(const char * file, int line, const char * func, const char * value){
+	printf("ASSERT(%s:%i): %s()  %s\r\n",file,line,func,value);
+	while(1) {}
+}
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-    ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	   printf("Wrong parameters value: file %s on line %d\r\n", file, line);
   /* USER CODE END 6 */
 
 }

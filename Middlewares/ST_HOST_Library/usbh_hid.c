@@ -684,14 +684,11 @@ USBH_StatusTypeDef USBH_HID_GetHIDReportDescriptor (USBH_HandleTypeDef *phost,
 	In case, for supporting Non-Boot Protocol devices and output reports,
 	user may parse the report descriptor*/
   USBH_StatusTypeDef status;
-  if(phost->RequestState == CMD_SEND)
-	{
 	  phost->Control.setup.b.bmRequestType = USB_D2H | USB_REQ_RECIPIENT_INTERFACE | USB_REQ_TYPE_STANDARD;
 	  phost->Control.setup.b.bRequest = USB_REQ_GET_DESCRIPTOR;
 	  phost->Control.setup.b.wValue.w = USB_DESC_HID_REPORT;
 	  phost->Control.setup.b.wIndex.w = interface;
 	  phost->Control.setup.b.wLength.w = length;
-	}
   return USBH_CtlReq(phost, phost->device.Data , length );
 }
 
@@ -708,14 +705,11 @@ USBH_StatusTypeDef USBH_HID_GetHIDReportDescriptor (USBH_HandleTypeDef *phost,
 USBH_StatusTypeDef USBH_HID_GetHIDDescriptor (USBH_HandleTypeDef *phost,
                                             uint16_t interface, uint16_t length)
 {
-	if(phost->RequestState == CMD_SEND)
-	{
-	    phost->Control.setup.b.bmRequestType = USB_D2H | USB_REQ_RECIPIENT_INTERFACE | USB_REQ_TYPE_STANDARD;
-	    phost->Control.setup.b.bRequest = USB_REQ_GET_DESCRIPTOR;
-	    phost->Control.setup.b.wValue.w = USB_DESC_HID;
-	    phost->Control.setup.b.wIndex.w = phost->device.current_interface;
-	    phost->Control.setup.b.wLength.w = length;
-	}
+	phost->Control.setup.b.bmRequestType = USB_D2H | USB_REQ_RECIPIENT_INTERFACE | USB_REQ_TYPE_STANDARD;
+	phost->Control.setup.b.bRequest = USB_REQ_GET_DESCRIPTOR;
+	phost->Control.setup.b.wValue.w = USB_DESC_HID;
+	phost->Control.setup.b.wIndex.w = phost->device.current_interface;
+	phost->Control.setup.b.wLength.w = length;
 	return USBH_CtlReq(phost, phost->device.Data , length );
 }
 

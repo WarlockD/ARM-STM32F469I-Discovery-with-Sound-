@@ -116,6 +116,9 @@ USBH_StatusTypeDef  USBH_Start            (USBH_HandleTypeDef *phost);
 USBH_StatusTypeDef  USBH_Stop             (USBH_HandleTypeDef *phost); 
 USBH_StatusTypeDef  USBH_Process          (USBH_HandleTypeDef *phost);
 USBH_StatusTypeDef  USBH_ReEnumerate      (USBH_HandleTypeDef *phost);
+void 				USBH_PopGlobalState(USBH_HandleTypeDef* phost);
+void 				USBH_PushGlobalState(USBH_HandleTypeDef* phost);
+
 
 /* USBH Low Level Driver */
 USBH_StatusTypeDef   USBH_LL_Init         (USBH_HandleTypeDef *phost);
@@ -139,6 +142,9 @@ USBH_StatusTypeDef  USBH_LL_NotifyURBChange (USBH_HandleTypeDef *phost);
 #endif
 USBH_StatusTypeDef   USBH_LL_SetToggle    (USBH_HandleTypeDef *phost, uint8_t , uint8_t );
 uint8_t              USBH_LL_GetToggle    (USBH_HandleTypeDef *phost, uint8_t );
+
+
+
 
 /* USBH Time base */
 void                 USBH_Delay (uint32_t Delay);

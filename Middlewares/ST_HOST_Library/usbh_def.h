@@ -183,7 +183,7 @@
 #define USBH_DEVICE_ADDRESS_DEFAULT                     0
 #define USBH_MAX_ERROR_COUNT                            2
 #define USBH_DEVICE_ADDRESS                             1
-
+#define MAX_STATE_STACK 								10
 
 /**
   * @}
@@ -294,7 +294,81 @@ typedef struct _ConfigurationDescriptor
   USBH_InterfaceDescTypeDef        Itf_Desc[1];
 } USBH_CfgDescTypeDef;
 
+/* Following states are used for gState */
+typedef enum
+{
+	HOST_INIT =0,
+	ERROR_STATE,
+	UTILITY_GET_STRING_DISCRIPTOR,
+	UTILITY_LOOKUP_STRING_DISCRIPTOR,
+	UTILITY_GET_DISCRIPTOR,
+	UTILITY_PUSH_STATE,
+	UTILITY_POP_STATE,
+	HOST_IDLE,
+	HOST_CONNECTED,
+	HOST_DEV_WAIT_FOR_ATTACHMENT,
+	HOST_DEV_ATTACHED,
+	HOST_DEV_DISCONNECTED,
+	HOST_DETECT_DEVICE_SPEED,
+	HOST_ENUMERATION,
+	HOST_ENUMERATION_FINISHED,
+	HOST_CLASS_REQUEST,
+	HOST_INPUT,
+	HOST_SET_CONFIGURATION,
+	HOST_CHECK_CLASS,
+	HOST_CLASS,
+	HOST_SUSPENDED,
+	HOST_ABORT_STATE,
+	ENUM_IDLE,
+	ENUM_GET_FULL_DEV_DESC,
+	ENUM_SET_ADDR,
+	ENUM_GET_CFG_DESC,
+	ENUM_GET_FULL_CFG_DESC,
+	ENUM_GET_MFC_STRING_DESC,
+	ENUM_GET_PRODUCT_STRING_DESC,
+	ENUM_GET_SERIALNUM_STRING_DESC,
+	CTRL_SETUP,
+	CTRL_SETUP_WAIT,
+	CTRL_DATA_IN,
+	CTRL_DATA_IN_WAIT,
+	CTRL_DATA_OUT,
+	CTRL_DATA_OUT_WAIT,
+	CTRL_STATUS_IN,
+	CTRL_STATUS_IN_WAIT,
+	CTRL_STATUS_OUT,
+	CTRL_STATUS_OUT_WAIT,
+	CTRL_ERROR,
+	CTRL_STALLED,
+	CTRL_COMPLETE,
+	USBH_MAX_STATES
+}HOST_StateTypeDef;
+typedef enum
+{
+	USBH_HOST_Disconnected = 0,
+	USBH_HOST_Connected,
+	USBH_HOST_ConnectedMissingDriver,
+} USBH_HostStatusTypeDef;
+typedef enum {
+	USBH_URB_IDLE=0,
+	USBH_URB_DONE,
+	USBH_URB_NOTREADY,
+	USBH_URB_NYET,
+	USBH_URB_ERROR,
+	USBH_URB_STALL,
+	USBH_STATE_MAX
+}USBH_URBStateTypeDef;
 
+struct _USBH_HandleTypeDef;
+typedef int USBH_MStateTypeDef;
+
+
+typedef enum {
+	USBH_STATE_OK,
+	USBH_STATE_BUSY,
+	USBH_STATE_FAIL,
+	USBH_STATE_PUSH,
+	USBH_STATE_POP,
+}USBH_StateStatusTypeDef;
 /* Following USB Host status */
 typedef enum 
 {
@@ -319,65 +393,7 @@ typedef enum
     
 }USBH_SpeedTypeDef;
 
-/* Following states are used for gState */
-typedef enum 
-{
-	UTILITY_GET_STRING_DISCRIPTOR=-5,
-	UTILITY_GET_DISCRIPTOR=-4,
-	UTILITY_PUSH_STATE= -3,
-	UTILITY_POP_STATE = -2,
-	ERROR_STATE = -1,
-	HOST_INIT =0,
-	HOST_IDLE,
-	HOST_DEV_WAIT_FOR_ATTACHMENT,
-	HOST_DEV_ATTACHED,
-	HOST_DEV_DISCONNECTED,
-	HOST_DETECT_DEVICE_SPEED,
-	HOST_ENUMERATION,
-	HOST_ENUMERATION_FINISHED,
-	HOST_CLASS_REQUEST,
-	HOST_INPUT,
-	HOST_SET_CONFIGURATION,
-	HOST_CHECK_CLASS,
-	HOST_CLASS,
-	HOST_SUSPENDED,
-	HOST_ABORT_STATE,
-	ENUM_IDLE,
-	ENUM_GET_FULL_DEV_DESC,
-	ENUM_SET_ADDR,
-	ENUM_GET_CFG_DESC,
-	ENUM_GET_FULL_CFG_DESC,
-	ENUM_GET_MFC_STRING_DESC,
-	ENUM_GET_PRODUCT_STRING_DESC,
-	ENUM_GET_SERIALNUM_STRING_DESC,
-	CTRL_IDLE,
-	CTRL_SETUP,
-	CTRL_SETUP_WAIT,
-	CTRL_DATA_IN,
-	CTRL_DATA_IN_WAIT,
-	CTRL_DATA_OUT,
-	CTRL_DATA_OUT_WAIT,
-	CTRL_STATUS_IN,
-	CTRL_STATUS_IN_WAIT,
-	CTRL_STATUS_OUT,
-	CTRL_STATUS_OUT_WAIT,
-	CTRL_ERROR,
-	CTRL_STALLED,
-	CTRL_COMPLETE,
-	CMD_IDLE,
-	CMD_SEND,
-	CMD_WAIT,
-}HOST_StateTypeDef;  
 
-typedef enum {
-	USBH_URB_IDLE=0,
-		USBH_URB_DONE,
-		USBH_URB_NOTREADY,
-		USBH_URB_NYET,
-		USBH_URB_ERROR,
-		USBH_URB_STALL,
-		USBH_STATE_MAX
-}USBH_URBStateTypeDef;
 
 typedef enum
 {
@@ -440,22 +456,13 @@ typedef struct
   void*                pData;
 } USBH_ClassTypeDef;
 
-struct _USBH_HandleTypeDef;
-typedef int USBH_MStateTypeDef;
-#define MAX_STATE_STACK 10
-
-typedef enum {
-	USBH_STATE_OK,
-	USBH_STATE_BUSY,
-	USBH_STATE_FAIL,
-	USBH_STATE_PUSH,
-	USBH_STATE_POP,
-}USBH_StateStatusTypeDef;
 
 typedef	USBH_StateStatusTypeDef (* USBH_CallbackTypeDef )(struct _USBH_HandleTypeDef *pHandle);
 typedef struct {
+	HOST_StateTypeDef 		PrevState;
 	HOST_StateTypeDef 		State;
-	USBH_CallbackTypeDef	Process;
+	int Value;
+	uint8_t* Data;
 } USBH_StateInfoTypeDef;
 
 
@@ -464,18 +471,12 @@ typedef struct _USBH_HandleTypeDef
 {
   __IO HOST_StateTypeDef    gPrevState;       /*  Host State Machine Value */
   __IO HOST_StateTypeDef    gState;       /*  Host State Machine Value */
-  HOST_StateTypeDef		    StateStack[MAX_STATE_STACK];
+  USBH_StateInfoTypeDef		StateStack[MAX_STATE_STACK];
   uint8_t					StackSize;
-  union {
-	  int Value;
-	  struct {
-		uint16_t Size;
-		uint8_t* Data;
-	  } ;
-  } StateData;
+  USBH_HostStatusTypeDef	HostStatus;
+  int StateValue;
+  uint8_t* StateData;
   USBH_StateInfoTypeDef		*Current;
-  USBH_CallbackTypeDef		Process;
-  uint32_t					StateValue;
   HOST_StateTypeDef      	RequestState;
   USBH_CtrlTypeDef      	Control;
   USBH_DeviceTypeDef    	device;

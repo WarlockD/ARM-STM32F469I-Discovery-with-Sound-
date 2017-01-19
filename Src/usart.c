@@ -49,6 +49,7 @@
 
 /* USER CODE BEGIN 0 */
 #include <string.h>
+#include <stdarg.h>
 static char uart_buffer[256];
 static UART_HandleTypeDef* s_chuart = NULL;
 void uart_set_console_out(UART_HandleTypeDef* huart){
@@ -189,7 +190,15 @@ void uart_puti(unsigned long value, int width, t_uart_mode mode) {
 	//char* buffer = uart_buffr +
 	//void uart_puti(unsigned long value, int width, t_uart_mode mode);
 }
-
+void uart_print(const char* fmt,...){
+	char buf[128];
+	va_list va;
+	va_start(va,fmt);
+	vsprintf(buf,fmt,va);
+	va_end(va);
+	buf[127]=0;
+	uart_puts(buf);
+}
 
 /* USER CODE END 1 */
 
