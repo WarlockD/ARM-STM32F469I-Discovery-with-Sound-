@@ -201,17 +201,13 @@ void HAL_HCD_Disconnect_Callback(HCD_HandleTypeDef *hhcd)
   */
 void HAL_HCD_HC_NotifyURBChange_Callback(HCD_HandleTypeDef *hhcd, uint8_t chnum, HCD_URBStateTypeDef urb_state)
 {
-	switch(urb_state){
-	case URB_IDLE: 		uart_print("URBChange: URB_IDLE(%i)\r\n",(int)chnum); break;
-	case URB_DONE:		uart_print("URBChange: URB_DONE(%i)\r\n",(int)chnum); break;
-	case URB_NOTREADY:	uart_print("URBChange: URB_NOTREADY(%i)\r\n",(int)chnum); break;
-	case URB_NYET:		uart_print("URBChange: URB_NYET(%i)\r\n",(int)chnum); break;
-	case URB_ERROR:		uart_print("URBChange: URB_ERROR(%i)\r\n",(int)chnum); break;
-	case URB_STALL:		uart_print("URBChange: URB_STALL(%i)\r\n",(int)chnum); break;
-	default:
-		assert(0);
-		break;
+
+	USBH_HandleTypeDef* phost = (USBH_HandleTypeDef*)hhcd->pData;
+	assert(phost->RequestState == CMD_WAIT);
+	if(phost){
+		if(phost->URBChangeCallback) phost->URBChangeCallback(phost,chnum, (USBH_URBStateTypeDef)urb_state);
 	}
+	phost->RequestState = CMD_SEND;
   /* To be used with OS to sync URB state with the global state machine */
 }
 
@@ -411,6 +407,8 @@ USBH_StatusTypeDef USBH_LL_SubmitURB(USBH_HandleTypeDef *phost,
                                      uint16_t length,
                                      uint8_t do_ping) 
 {
+	assert(phost->RequestState == CMD_SEND);
+	phost->RequestState = CMD_WAIT;
   HAL_HCD_HC_SubmitRequest(phost->pData,
                            pipe, 
                            direction,

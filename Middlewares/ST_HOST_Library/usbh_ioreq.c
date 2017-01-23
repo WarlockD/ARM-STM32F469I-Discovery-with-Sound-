@@ -129,6 +129,7 @@ USBH_StatusTypeDef USBH_CtlSendData (USBH_HandleTypeDef *phost,
                                 uint8_t pipe_num,
                                 uint8_t do_ping )
 {
+
   if(phost->device.speed != USBH_SPEED_HIGH)
   {
     do_ping = 0;

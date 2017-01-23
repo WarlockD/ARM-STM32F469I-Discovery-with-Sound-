@@ -93,15 +93,16 @@ extern uint8_t USBH_CfgDesc[512];
 /** @defgroup USBH_CTLREQ_Exported_FunctionsPrototype
   * @{
   */
-USBH_StatusTypeDef USBH_CtlReq     (USBH_HandleTypeDef *phost, 
-                             uint8_t             *buff,
-                             uint16_t            length);
+USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost);
+
+
 
 USBH_StatusTypeDef USBH_GetDescriptor(USBH_HandleTypeDef *phost,                                
                                uint8_t  req_type,
-                               uint16_t value_idx, 
-                               uint8_t* buff, 
-                               uint16_t length );
+                               uint16_t value,
+							   uint16_t index,
+                               uint8_t* buff,
+							   uint16_t length);
 
 USBH_StatusTypeDef USBH_Get_DevDesc(USBH_HandleTypeDef *phost,
                              uint8_t length);
@@ -124,8 +125,13 @@ USBH_StatusTypeDef USBH_SetInterface(USBH_HandleTypeDef *phost,
 USBH_StatusTypeDef USBH_ClrFeature(USBH_HandleTypeDef *phost, 
                                    uint8_t ep_num);
 
-USBH_DescHeaderTypeDef     *USBH_GetNextDesc (uint8_t   *pbuf,
-                                                  uint16_t  *ptr);
+
+
+USBH_StatusTypeDef USBH_Print_DevDesc(int ident, USBH_DevDescTypeDef *dev);
+USBH_StatusTypeDef USBH_Print_EndpointDesc(int ident, USBH_EpDescTypeDef *epp);
+USBH_StatusTypeDef USBH_Print_InterfaceDesc(int ident, USBH_InterfaceDescTypeDef *iface);
+USBH_StatusTypeDef USBH_Print_CfgDesc(int ident, USBH_CfgDescTypeDef *dev);
+USBH_StatusTypeDef USBH_Print_FullCfgDesc(int ident, USBH_CfgDescTypeDef *dev);
 /**
   * @}
   */ 

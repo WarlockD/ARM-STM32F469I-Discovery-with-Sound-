@@ -83,6 +83,9 @@ USBH_StatusTypeDef  DeInitStateMachine(USBH_HandleTypeDef *phost);
 static void USBH_Process_OS(void const * argument);
 #endif
 
+USBH_StateInfoTypeDef* USBH_CurrentState(USBH_HandleTypeDef *phost){
+	return &phost->StateStack[phost->StackPos];
+}
 /**
   * @brief  HCD_Init 
   *         Initialize the HOST Core.
@@ -167,10 +170,13 @@ USBH_StatusTypeDef  DeInitStateMachine(USBH_HandleTypeDef *phost)
   /* Clear Pipes flags*/
   for ( ; i < USBH_MAX_PIPES_NBR; i++) phost->Pipes[i] = 0;
   memset(&phost->device,0,sizeof(USBH_DeviceTypeDef));
+  memset(phost->StateStack,0,sizeof(USBH_StateInfoTypeDef)*MAX_STATE_STACK);
+  phost->StateStack[0].State = HOST_IDLE;
+  phost->StateStack[0].PrevState = HOST_IDLE;
+  phost->StackPos = 0;
 
-  phost->gState = HOST_IDLE;
   phost->Timer = 0;  
-  
+
   phost->Control.state = CTRL_SETUP;
   phost->Control.pipe_size = USBH_MPS_DEFAULT;  
   phost->Control.errorcount = 0;
@@ -226,14 +232,14 @@ USBH_StatusTypeDef USBH_SelectInterface(USBH_HandleTypeDef *phost, uint8_t inter
 {
   USBH_StatusTypeDef   status = USBH_OK;
   
-  USBH_UsrLog ("This device has %i interfaces\r\n", phost->device.CfgDesc->bNumInterfaces);
-  if(interface < phost->device.CfgDesc->bNumInterfaces)
+  USBH_UsrLog ("This device has %i interfaces\r\n", phost->device.CfgDesc->NumInterfaces);
+  if(interface < phost->device.CfgDesc->NumInterfaces)
   {
     phost->device.current_interface = interface;
     USBH_UsrLog ("Switching to Interface (#%d)", interface);
-    USBH_UsrLog ("Class    : %xh", phost->device.CfgDesc->Itf_Desc[interface].bInterfaceClass );
-    USBH_UsrLog ("SubClass : %xh", phost->device.CfgDesc->Itf_Desc[interface].bInterfaceSubClass );
-    USBH_UsrLog ("Protocol : %xh", phost->device.CfgDesc->Itf_Desc[interface].bInterfaceProtocol );
+    USBH_UsrLog ("Class    : %xh", phost->device.CfgDesc->Interfaces[interface].InterfaceClass );
+    USBH_UsrLog ("SubClass : %xh", phost->device.CfgDesc->Interfaces[interface].InterfaceSubClass );
+    USBH_UsrLog ("Protocol : %xh", phost->device.CfgDesc->Interfaces[interface].InterfaceProtocol );
   }
   else
   {
@@ -252,7 +258,7 @@ USBH_StatusTypeDef USBH_SelectInterface(USBH_HandleTypeDef *phost, uint8_t inter
   */
 uint8_t USBH_GetActiveClass(USBH_HandleTypeDef *phost)
 {
-   return (phost->device.CfgDesc->Itf_Desc[phost->device.current_interface].bInterfaceClass);
+   return (phost->device.CfgDesc->Interfaces[phost->device.current_interface].InterfaceClass);
 }
 /**
   * @brief  USBH_FindInterface 
@@ -273,12 +279,12 @@ uint8_t  USBH_FindInterface(USBH_HandleTypeDef *phost, uint8_t Class, uint8_t Su
   pif = (USBH_InterfaceDescTypeDef *)0;
   pcfg = phost->device.CfgDesc;
   
-  while (if_ix < phost->device.CfgDesc->bNumInterfaces)
+  while (if_ix < phost->device.CfgDesc->NumInterfaces)
   {
-    pif = &pcfg->Itf_Desc[if_ix];
-    if(((pif->bInterfaceClass == Class) || (Class == 0xFF))&&
-       ((pif->bInterfaceSubClass == SubClass) || (SubClass == 0xFF))&&
-         ((pif->bInterfaceProtocol == Protocol) || (Protocol == 0xFF)))
+    pif = &pcfg->Interfaces[if_ix];
+    if(((pif->InterfaceClass == Class) || (Class == 0xFF))&&
+       ((pif->InterfaceSubClass == SubClass) || (SubClass == 0xFF))&&
+         ((pif->InterfaceProtocol == Protocol) || (Protocol == 0xFF)))
     {
       return  if_ix;
     }
@@ -305,10 +311,10 @@ uint8_t  USBH_FindInterfaceIndex(USBH_HandleTypeDef *phost, uint8_t interface_nu
   pif = (USBH_InterfaceDescTypeDef *)0;
   pcfg = phost->device.CfgDesc;
   
-  while (if_ix < phost->device.CfgDesc->bNumInterfaces)
+  while (if_ix < phost->device.CfgDesc->NumInterfaces)
   {
-    pif = &pcfg->Itf_Desc[if_ix];
-    if((pif->bInterfaceNumber == interface_number) && (pif->bAlternateSetting == alt_settings))
+    pif = &pcfg->Interfaces[if_ix];
+    if((pif->InterfaceNumber == interface_number) && (pif->AlternateSetting == alt_settings))
     {
       return  if_ix;
     }
@@ -383,7 +389,6 @@ USBH_StatusTypeDef  USBH_ReEnumerate   (USBH_HandleTypeDef *phost)
 
 
 
-
 /**
   * @brief  USBH_LL_SetTimer 
   *         Set the initial Host Timer tick
@@ -414,7 +419,7 @@ void  USBH_LL_IncTimer  (USBH_HandleTypeDef *phost)
   */
 void  USBH_HandleSof  (USBH_HandleTypeDef *phost)
 {
-  if((phost->gState == HOST_CLASS)&&(phost->pActiveClass != NULL))
+  if((phost->StateStack[phost->StackPos].State == HOST_CLASS)&&(phost->pActiveClass != NULL))
   {
     phost->pActiveClass->SOFProcess(phost);
   }
@@ -427,15 +432,15 @@ void  USBH_HandleSof  (USBH_HandleTypeDef *phost)
   */
 USBH_StatusTypeDef  USBH_LL_Connect  (USBH_HandleTypeDef *phost)
 {
-	switch(phost->gState){
+	uart_print("MEH USBH_LL_Connect\r\n");
+	switch(phost->StateStack[0].State){
 	case HOST_IDLE:
 		phost->device.is_connected = 1;
-		phost->gState = HOST_CONNECTED;
-		if(phost->pUser != NULL) phost->pUser(phost, HOST_USER_CONNECTION);
+		phost->StateStack[0].State = HOST_CONNECTED;
 		break;
 	case HOST_DEV_WAIT_FOR_ATTACHMENT:
 		phost->device.is_connected = 1;
-		phost->gState = HOST_DEV_ATTACHED;
+		phost->StateStack[0].State = HOST_DEV_ATTACHED;
 		break;
 	default:
 		break; // itnore the rest
@@ -456,6 +461,7 @@ USBH_StatusTypeDef  USBH_LL_Connect  (USBH_HandleTypeDef *phost)
 USBH_StatusTypeDef  USBH_LL_Disconnect  (USBH_HandleTypeDef *phost)
 {
   /*Stop Host */ 
+	phost->device.is_connected = 0;
   USBH_LL_Stop(phost);  
   
   /* FRee Control Pipes */
@@ -463,15 +469,16 @@ USBH_StatusTypeDef  USBH_LL_Disconnect  (USBH_HandleTypeDef *phost)
   USBH_FreePipe  (phost, phost->Control.pipe_out);  
    
   phost->device.is_connected = 0; 
-   
-  if(phost->pUser != NULL)
-    phost->pUser(phost, HOST_USER_DISCONNECTION);
+  phost->StateStack[0].State= HOST_DEV_DISCONNECTED;
+  phost->StackPos = 0; // clear the stack too
+
+  if(phost->pUser != NULL) phost->pUser(phost, HOST_USER_DISCONNECTION);
   USBH_UsrLog("USB Device disconnected"); 
-  
+
   /* Start the low level driver  */
   USBH_LL_Start(phost);
   
-  phost->gState = HOST_DEV_DISCONNECTED;
+
   
 #if (USBH_USE_OS == 1)
   osMessagePut ( phost->os_event, USBH_PORT_EVENT, 0);

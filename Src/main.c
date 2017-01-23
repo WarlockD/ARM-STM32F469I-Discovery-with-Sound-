@@ -504,7 +504,7 @@ void __assert_func(const char * file, int line, const char * func, const char * 
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-	   printf("Wrong parameters value: file %s on line %d\r\n", file, line);
+	   printf("Wrong parameters value: file %s on line %lu\r\n", file, line);
   /* USER CODE END 6 */
 
 }

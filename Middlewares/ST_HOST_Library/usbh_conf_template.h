@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "usart.h"
 
 /** @addtogroup USBH_OTG_DRIVER
   * @{
@@ -59,7 +60,7 @@
 #define USBH_MAX_NUM_SUPPORTED_CLASS          1
 #define USBH_MAX_SIZE_CONFIGURATION           0x200
 #define USBH_MAX_DATA_BUFFER                  0x200
-#define USBH_DEBUG_LEVEL                      2
+#define USBH_DEBUG_LEVEL                      3
 #define USBH_USE_OS                           1
     
 /** @defgroup USBH_Exported_Macros
@@ -76,8 +77,8 @@
 
   
 #if (USBH_DEBUG_LEVEL > 0)
-#define  USBH_UsrLog(...)   printf(__VA_ARGS__);\
-                            printf("\n");
+#define  USBH_UsrLog(...)   uart_print(__VA_ARGS__);\
+							uart_print("\r\n");
 #else
 #define USBH_UsrLog(...)   
 #endif 
@@ -85,18 +86,18 @@
                             
 #if (USBH_DEBUG_LEVEL > 1)
 
-#define  USBH_ErrLog(...)   printf("ERROR: ") ;\
-                            printf(__VA_ARGS__);\
-                            printf("\n");
+#define  USBH_ErrLog(...)   uart_print("ERROR: ") ;\
+							uart_print(__VA_ARGS__);\
+							uart_print("\r\n");
 #else
 #define USBH_ErrLog(...)   
 #endif 
                             
                             
 #if (USBH_DEBUG_LEVEL > 2)                         
-#define  USBH_DbgLog(...)   printf("DEBUG : ") ;\
-                            printf(__VA_ARGS__);\
-                            printf("\n");
+#define  USBH_DbgLog(...)   uart_print("DEBUG : ") ;\
+							uart_print(__VA_ARGS__);\
+							uart_print("\r\n");
 #else
 #define USBH_DbgLog(...)                         
 #endif
