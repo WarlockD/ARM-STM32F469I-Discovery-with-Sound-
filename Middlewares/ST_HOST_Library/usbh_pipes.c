@@ -27,56 +27,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_pipes.h"
-
-/** @addtogroup USBH_LIB
-  * @{
-  */
-
-/** @addtogroup USBH_LIB_CORE
-* @{
-*/
-  
-/** @defgroup USBH_PIPES
-  * @brief This file includes opening and closing Pipes
-  * @{
-  */ 
-
-/** @defgroup USBH_PIPES_Private_Defines
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-/** @defgroup USBH_PIPES_Private_TypesDefinitions
-  * @{
-  */ 
-/**
-  * @}
-  */ 
+#include <assert.h>
 
 
-/** @defgroup USBH_PIPES_Private_Macros
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_PIPES_Private_Variables
-  * @{
-  */ 
-
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBH_PIPES_Private_Functions
-  * @{
-  */ 
-static uint16_t USBH_GetFreePipe (USBH_HandleTypeDef *phost);
 
 
 /**
@@ -90,23 +43,17 @@ static uint16_t USBH_GetFreePipe (USBH_HandleTypeDef *phost);
   * @param  mps: max pkt size
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_OpenPipe  (USBH_HandleTypeDef *phost,
-                            uint8_t pipe_num,
-                            uint8_t epnum,
-                            uint8_t dev_address,
-                            uint8_t speed,
-                            uint8_t ep_type,
-                            uint16_t mps)
+USBH_StatusTypeDef USBH_OpenPipe  (USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle)
 {
-
+	// fifo_init_static(&handle->fifo,handle->Data, USBH_MAX_DATA_BUFFER);
+	assert(handle && handle->state == PIPE_IDLE);
   USBH_LL_OpenPipe(phost,
-                        pipe_num,
-                        epnum,
-                        dev_address,
-                        speed,
-                        ep_type,
-                        mps);
-  
+		  handle->Pipe,
+		  handle->Init.EpNumber,
+		  handle->Init.Address,
+		  handle->Init.Speed,
+		  handle->Init.EpType,
+		  handle->Init.PacketSize);
   return USBH_OK; 
 
 }
@@ -118,12 +65,10 @@ USBH_StatusTypeDef USBH_OpenPipe  (USBH_HandleTypeDef *phost,
   * @param  pipe_num: Pipe Number
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_ClosePipe  (USBH_HandleTypeDef *phost,
-                            uint8_t pipe_num)
+USBH_StatusTypeDef USBH_ClosePipe  (USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle)
 {
-
-  USBH_LL_ClosePipe(phost, pipe_num);
-  
+	assert(handle && handle->state == PIPE_IDLE);
+  USBH_LL_ClosePipe(phost, handle->Pipe);
   return USBH_OK; 
 
 }
@@ -135,17 +80,22 @@ USBH_StatusTypeDef USBH_ClosePipe  (USBH_HandleTypeDef *phost,
   * @param  ep_addr: End point for which the Pipe to be allocated
   * @retval Pipe number
   */
-uint8_t USBH_AllocPipe  (USBH_HandleTypeDef *phost, uint8_t ep_addr)
+USBH_PipeHandleTypeDef* USBH_AllocPipe  (USBH_HandleTypeDef *phost, void** owner)
 {
-  uint16_t pipe;
-  
-  pipe =  USBH_GetFreePipe(phost);
-
-  if (pipe != 0xFFFF)
-  {
-	phost->Pipes[pipe] = 0x8000 | ep_addr;
-  }
-  return pipe;
+	USBH_PipeHandleTypeDef* pipe = NULL;
+	for (uint8_t idx = 0 ; idx < 11 ; idx++)
+		  if(phost->Pipes[idx].state == PIPE_NOTALLOCATED) {
+			  USBH_PipeHandleTypeDef* pipe = &phost->Pipes[idx];
+			  pipe->Pipe = idx;
+			  if(pipe->Init.Direction)
+			  if(owner) {
+				  *owner = pipe;
+				  pipe->owner = owner;
+			  }
+			  break;
+		  }
+	assert(pipe);
+	return pipe;
 }
 
 /**
@@ -155,34 +105,55 @@ uint8_t USBH_AllocPipe  (USBH_HandleTypeDef *phost, uint8_t ep_addr)
   * @param  idx: Pipe number to be freed 
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_FreePipe  (USBH_HandleTypeDef *phost, uint8_t idx)
+void USBH_FreePipe  (USBH_HandleTypeDef *phost, USBH_PipeHandleTypeDef* handle)
 {
-   if(idx < 11)
-   {
-	 phost->Pipes[idx] &= 0x7FFF;
-   }
-   return USBH_OK;
+	if(handle) {
+		assert(handle->state == PIPE_IDLE);
+		if(handle->owner) { *handle->owner = NULL;handle->owner=NULL; }
+		handle->state = PIPE_NOTALLOCATED;
+		handle->Pipe = 0xFF;
+
+		// all you have to do
+	}
 }
 
+USBH_StatusTypeDef USBH_ProcessPipe(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle){
+	assert(handle->state != PIPE_NOTALLOCATED);
+	if(phost->port_state == HOST_PORT_ACTIVE) return USBH_BUSY;
+	if(phost->port_state != HOST_PORT_IDLE) return USBH_FAIL;// fail on bad state
+	switch(handle->state){
+	case PIPE_COMPLETE:
+			phost->port_state = HOST_PORT_IDLE;
+			return handle->urb_state == USBH_URB_DONE ? USBH_OK : USBH_FAIL;
+	case PIPE_IDLE:
+		phost->port_state = HOST_PORT_ACTIVE;
+		// if we are not an intruppt and sending data, do a ping
+		handle->urb_state = USBH_URB_IDLE;
+		handle->state = PIPE_WORKING;
+		uint8_t do_ping = (handle->Init.Speed == USBH_SPEED_HIGH && handle->Init.Direction == PIPE_DIR_OUT)  ? 1 : 0;
+		USBH_LL_SubmitURB (phost,
+			handle->Pipe,             // Pipe index
+			handle->Init.Direction,     // Direction : OUT
+			handle->Init.EpType,		// EP type
+			handle->Init.DataType,
+			handle->Data,
+			handle->Size,
+			do_ping); /* do ping (HS Only)*/
+		// no break
+	case PIPE_WORKING: return USBH_BUSY; break;
+	case PIPE_NOTALLOCATED:
+			assert(handle->state != PIPE_NOTALLOCATED);
+			// no break
+	default: return USBH_FAIL;
+	}
+}
 /**
   * @brief  USBH_GetFreePipe
   * @param  phost: Host Handle
   *         Get a free Pipe number for allocation to a device endpoint
   * @retval idx: Free Pipe number
   */
-static uint16_t USBH_GetFreePipe (USBH_HandleTypeDef *phost)
-{
-  uint8_t idx = 0;
-  
-  for (idx = 0 ; idx < 11 ; idx++)
-  {
-	if ((phost->Pipes[idx] & 0x8000) == 0)
-	{
-	   return idx;
-	} 
-  }
-  return 0xFFFF;
-}
+
 /**
 * @}
 */ 

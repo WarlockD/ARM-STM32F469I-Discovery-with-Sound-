@@ -44,11 +44,11 @@
 #include "usbh_hid_parser.h"
 #include "usbh_fifo.h"
 
-static USBH_StatusTypeDef USBH_HID_InterfaceInit  (USBH_HandleTypeDef *phost);
-static USBH_StatusTypeDef USBH_HID_InterfaceDeInit  (USBH_HandleTypeDef *phost);
-static USBH_StatusTypeDef USBH_HID_ClassRequest(USBH_HandleTypeDef *phost);
-static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost);
-static USBH_StatusTypeDef USBH_HID_SOFProcess(USBH_HandleTypeDef *phost);
+static USBH_StatusTypeDef USBH_HID_InterfaceInit  (USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev);
+static USBH_StatusTypeDef USBH_HID_InterfaceDeInit  (USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev);
+static USBH_StatusTypeDef USBH_HID_ClassRequest(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev);
+static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev);
+static USBH_StatusTypeDef USBH_HID_SOFProcess(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev);
 static void USBH_HID_ParseHIDDesc (HID_DescTypeDef * desc, uint8_t *buf);
 
 // Reports should be big enough to hold them all, no error checking on its size
@@ -225,7 +225,7 @@ static USBH_StatusTypeDef USBH_HID_DebugPrint(USBH_HandleTypeDef *phost){
 
 
 }
-static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
+static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {	
 	USBH_StatusTypeDef status = USBH_FAIL ;
 
@@ -322,7 +322,7 @@ static USBH_StatusTypeDef USBH_HID_InterfaceInit(USBH_HandleTypeDef *phost)
   * @param  phost: Host handle
   * @retval USBH Status
   */
-static USBH_StatusTypeDef USBH_HID_InterfaceDeInit (USBH_HandleTypeDef *phost )
+static USBH_StatusTypeDef USBH_HID_InterfaceDeInit (USBH_HandleTypeDef *phost ,USBH_DeviceTypeDef* dev)
 {	
 	HID_HandleTypeDef *HID_Handles = (HID_HandleTypeDef *) phost->pActiveClass->pData;
 	if(HID_Handles == NULL) return USBH_FAIL;
@@ -433,7 +433,7 @@ USBH_StatusTypeDef USBH_HID_ClassInterfaceRequest(USBH_HandleTypeDef *phost, uin
 }
 
 
-USBH_StatusTypeDef USBH_HID_ClassRequest(USBH_HandleTypeDef *phost)
+USBH_StatusTypeDef USBH_HID_ClassRequest(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {   
   USBH_StatusTypeDef status         = USBH_BUSY;
 
@@ -521,7 +521,7 @@ static USBH_StatusTypeDef USBH_HID_ProcessPerInterface(USBH_HandleTypeDef *phost
 		  }
 	  return status;
 }
-static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost)
+static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {
 
   USBH_StatusTypeDef status = USBH_OK;
@@ -543,7 +543,7 @@ static USBH_StatusTypeDef USBH_HID_Process(USBH_HandleTypeDef *phost)
   * @param  phost: Host handle
   * @retval USBH Status
   */
-static USBH_StatusTypeDef USBH_HID_SOFProcess(USBH_HandleTypeDef *phost)
+static USBH_StatusTypeDef USBH_HID_SOFProcess(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {
 	HID_HandleTypeDef *HID_Handles =  (HID_HandleTypeDef *)phost->pActiveClass->pData;
 	for(uint8_t interface=0; interface < phost->device.CfgDesc->NumInterfaces;interface++) {

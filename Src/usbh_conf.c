@@ -203,11 +203,11 @@ void HAL_HCD_HC_NotifyURBChange_Callback(HCD_HandleTypeDef *hhcd, uint8_t chnum,
 {
 
 	USBH_HandleTypeDef* phost = (USBH_HandleTypeDef*)hhcd->pData;
-	assert(phost->RequestState == CMD_WAIT);
-	if(phost){
-		if(phost->URBChangeCallback) phost->URBChangeCallback(phost,chnum, (USBH_URBStateTypeDef)urb_state);
-	}
-	phost->RequestState = CMD_SEND;
+	USBH_PipeHandleTypeDef* pipe = &phost->Pipes[chnum];
+	pipe->urb_state = (USBH_URBStateTypeDef)urb_state;
+	pipe->state=PIPE_COMPLETE;
+	phost->port_state = HOST_PORT_IDLE;
+	if(pipe->Callback) pipe->Callback(phost,pipe);
   /* To be used with OS to sync URB state with the global state machine */
 }
 
@@ -407,8 +407,6 @@ USBH_StatusTypeDef USBH_LL_SubmitURB(USBH_HandleTypeDef *phost,
                                      uint16_t length,
                                      uint8_t do_ping) 
 {
-	assert(phost->RequestState == CMD_SEND);
-	phost->RequestState = CMD_WAIT;
   HAL_HCD_HC_SubmitRequest(phost->pData,
                            pipe, 
                            direction,

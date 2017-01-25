@@ -180,10 +180,10 @@ void SetupUSB() {
 	  /* Init Host Library */
 	  USBH_Init(&hUSBHost, USBH_UserProcess, 0);
 	  USBH_Stop(&hUSBHost); // reset in case of shut down
-
+//jj
 	  /* Add Supported Class */
-	  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
-	  USBH_HID_InstallDriver(USBH_HID_JoystickInit);
+	//  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
+	//  USBH_HID_InstallDriver(USBH_HID_JoystickInit);
 
 	  /* Start Host Process */
 	  USBH_Start(&hUSBHost);
@@ -195,6 +195,7 @@ void testusb() {
 		refreshUSB();
 	}
 }
+void SystemTimerConfig();
 /* USER CODE END 0 */
 
 int main(void)
@@ -211,6 +212,7 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
+
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -235,7 +237,7 @@ int main(void)
   BSP_SDRAM_Init();
  // layer0_address = malloc(800 * 480 * sizeof(uint32_t) * 2);
   BSP_LCD_Init();
-
+  SystemTimerConfig();
    // OnError_Handler(lcd_status != LCD_OK);
 
     BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
@@ -336,6 +338,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   RCC_OscInitStruct.PLL.PLLR = 2;
+
   if(HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();

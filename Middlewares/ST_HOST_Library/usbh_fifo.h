@@ -26,13 +26,14 @@ typedef struct {
 
 void staticmem_init(StaticMemTypeDef* m, uint8_t * buf, uint16_t size);
 void staticmem_reset(StaticMemTypeDef* m);
-void* staticmem_alloc(StaticMemTypeDef* m, size_t size);
+void* staticmem_alloc(StaticMemTypeDef* m, size_t size, void** user);
 // realloc only works on the last pointer used
 void* staticmem_realloc(StaticMemTypeDef* m, void* ptr,size_t size);
 void staticmem_free(StaticMemTypeDef* m, void* ptr);
 size_t staticmem_used(StaticMemTypeDef* m);
 
-void fifo_init(FIFO_TypeDef * f, uint8_t * buf, uint16_t size);
+// init with a static array
+void fifo_init_static(FIFO_TypeDef * f, uint8_t * buf, uint16_t size);
 
 uint16_t  fifo_read(FIFO_TypeDef * f, void * buf, uint16_t  nbytes);
 uint16_t  fifo_write(FIFO_TypeDef * f, const void * buf, uint16_t  nbytes);

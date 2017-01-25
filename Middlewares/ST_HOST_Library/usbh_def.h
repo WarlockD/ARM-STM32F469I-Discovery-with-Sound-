@@ -287,16 +287,18 @@ typedef struct _DeviceDescriptor
   USBH_CfgDescTypeDef*	Configurations;
 }  USBH_DevDescTypeDef;
 
-/* Following states are used for gState */
+typedef enum {
+	HOST_PORT_DISCONNECTED=0,
+	HOST_PORT_CONNECTED,
+	HOST_PORT_WAIT_FOR_ATTACHMENT,
+	HOST_PORT_IDLE,		// no data going in or out
+	HOST_PORT_ACTIVE,	// waiting for packet or finish trasmit
+} PORT_StateTypeDef;
+
 typedef enum
 {
 	HOST_IDLE=0,
 	HOST_FINISHED, // returned on a finished process
-	HOST_CONNECTED,
-	HOST_DEV_WAIT_FOR_ATTACHMENT,
-	HOST_DEV_ATTACHED,
-	HOST_DEV_DISCONNECTED,
-	HOST_DETECT_DEVICE_SPEED,
 	HOST_ENUMERATION, // --> goto ENUM_SET_ADDR
 		ENUM_GET_DEV_DESC, // we HAVE to send a packet first
 		ENUM_SET_ADDR,	  // change the addres here then
@@ -320,15 +322,7 @@ const char* HOST_StateTypeToString(HOST_StateTypeDef t);
 
 typedef enum
 {
-  CMD_IDLE =0,
-  CMD_SEND,
-  CMD_WAIT
-} CMD_StateTypeDef;
-
-typedef enum
-{
-  CTRL_IDLE =0,
-  CTRL_SETUP,
+  CTRL_SETUP=0,
   CTRL_DATA_IN,
   CTRL_DATA_OUT,
   CTRL_STATUS_IN,
@@ -406,26 +400,7 @@ typedef	USBH_StatusTypeDef (* USBH_CallbackTypeDef )(struct _USBH_HandleTypeDef 
 
 typedef void (*USBH_URBChangeCallback)(struct _USBH_HandleTypeDef *pHandle, uint8_t chnum, USBH_URBStateTypeDef urb_state);
 
-typedef struct {
-	uint8_t address; // usb device address
-	uint8_t pipe;
-} USBH_EndPointTypeDef;
-/* Control request structure */
-typedef struct 
-{
-	USBH_RequestInitTypeDef Init;
-  uint8_t               pipe_in; 
-  uint8_t               pipe_out; 
-  uint8_t               pipe_size;  
-  uint8_t               *buff;
-  uint16_t              length;
-  uint16_t              timer;  
-  USB_Setup_TypeDef     setup;
-  __IO CTRL_StateTypeDef     state;
 
-  CTRL_StateTypeDef     prev_state;
-  uint8_t               errorcount;  
-} USBH_CtrlTypeDef;
 
 typedef struct _DescStringCache{
 	struct _DescStringCache* Next;
@@ -434,12 +409,112 @@ typedef struct _DescStringCache{
 	char Data[1];
 } USBH_DescStringCacheTypeDef;
 
+struct __DeviceType;
+struct _PipeHandle;
+struct __DeviceType;
 
-/* Attached device structure */
+typedef struct _StateInfo {
+	__IO  HOST_StateTypeDef 	PrevState;
+	__IO  HOST_StateTypeDef 	State;
+	int Value;
+	void* Data;
+	struct __DeviceType* Device;
+	struct _StateInfo* Parent;
+	struct _StateInfo* Children;
+	struct _StateInfo* Next;
+	// humm, we need to keep a state of whats going on and what packet we are on
+} USBH_StateInfoTypeDef;
+
+
+
+typedef enum
+{
+	PIPE_NOTALLOCATED = 0,
+	PIPE_IDLE,
+	PIPE_WORKING,
+	PIPE_COMPLETE,	// only set from the interrupt
+} USBH_PipeStateTypeDef;
+
+typedef enum {
+	PIPE_PID_SETUP=0,
+	PIPE_PID_DATA,
+} USBH_PipeDataTypeDef;
+
+typedef enum {
+	PIPE_EP_CONTROL =0,
+	PIPE_EP_ISO ,
+	PIPE_EP_BULK ,
+	PIPE_EP_INTERRUPT ,
+} USBH_PipeEndpointTypeDef;
+
+#define USBH_SETUP_PKT_SIZE                       8
+
+typedef enum
+{
+	PIPE_DIR_OUT,
+	PIPE_DIR_IN,
+} USBH_PipeDirectionTypeDef;
+
+typedef struct _PipeInit {
+	USBH_PipeDirectionTypeDef Direction; // set on init
+	USBH_SpeedTypeDef Speed;
+	USBH_PipeEndpointTypeDef EpType;
+	USBH_PipeDataTypeDef DataType;
+	uint8_t Address;
+	uint8_t PacketSize;
+	uint8_t EpNumber;
+} USBH_PipeInitTypeDef;
+
+
+
+typedef struct _PipeHandle {
+	USBH_PipeInitTypeDef Init;
+	void (*Callback)(struct _USBH_HandleTypeDef *phost,struct _PipeHandle* pipe);
+	uint8_t Pipe; 	// set on init
+	uint8_t* Data;  // data from or to pipe. must be big enough for the packet size
+	uint16_t Size;	// data size to be trasfered
+	__IO USBH_PipeStateTypeDef state;
+	__IO USBH_URBStateTypeDef urb_state;
+	void** owner; // device using pipe, null if not in use
+} USBH_PipeHandleTypeDef;
+
+
+
+
+/* Control request structure */
 typedef struct
 {
-	uint8_t                           Data[USBH_MAX_DATA_BUFFER];
-	uint8_t                           DescData[USBH_MAX_DATA_BUFFER];
+	USBH_RequestInitTypeDef 	Init;
+	USBH_PipeHandleTypeDef* 	pipe_in;
+	USBH_PipeHandleTypeDef* 	pipe_out;
+	USB_Setup_TypeDef     		setup;
+	uint8_t*					data;
+	uint16_t					length;
+	uint16_t              		timer;
+	__IO CTRL_StateTypeDef     	state;
+	CTRL_StateTypeDef     		prev_state;
+	uint8_t               		errorcount;
+} USBH_CtrlTypeDef;
+
+
+typedef struct _USBH_Class {
+	const char* Name;
+	uint8_t ClassCode;
+	USBH_StatusTypeDef  (*Init)        (struct _USBH_HandleTypeDef *phost,struct __DeviceType* dev);
+	USBH_StatusTypeDef  (*DeInit)      (struct _USBH_HandleTypeDef *phost,struct __DeviceType* dev);
+	USBH_StatusTypeDef  (*Requests)    (struct _USBH_HandleTypeDef *phost,struct __DeviceType* dev);
+	USBH_StatusTypeDef  (*BgndProcess) (struct _USBH_HandleTypeDef *phost,struct __DeviceType* dev);
+	USBH_StatusTypeDef  (*SOFProcess)  (struct _USBH_HandleTypeDef *phost,struct __DeviceType* dev);
+	void *pData;
+	//USBH_DriverKindTypeDef Type;
+	struct _USBH_Class* Next; // used in a chain list of drivers
+} USBH_ClassTypeDef;
+
+/* Attached device structure */
+typedef struct __DeviceType
+{
+	uint8_t                    	  	  DescData[USBH_MAX_DATA_BUFFER]; // block of space used for device data
+	StaticMemTypeDef				  Memory;
 	uint16_t					      DescDataUsed;
 	// the two below are stored in CfgDesc_Raw lineraly.
 	USBH_DevDescTypeDef*              DevDesc;
@@ -448,9 +523,14 @@ typedef struct
 	uint8_t							  configuration;
 	uint8_t                           address;
 	uint8_t                           speed;
-	__IO uint8_t                      is_connected;
 	uint8_t                           current_interface;
+	uint8_t							  interface_count;
+	USBH_ClassTypeDef*				  ActiveClass[1]; // array of interfaces
+	void* pData;					  // user data
+	struct __DeviceType* Next;
 }USBH_DeviceTypeDef;
+
+
 
 
 
@@ -463,38 +543,15 @@ typedef enum {
 
 struct _USBH_Driver;
 
-typedef struct _USBH_DriverHandle
-{
-	struct _USBH_HandleTypeDef* phost;
-  uint8_t Interface;	// Current Interface being used
-  uint8_t Address; 		// USB address for USB device
-  void* pData;			// User Data
-  // endpoint information? humm
-} USBH_DriverHandleTypeDef;
 
-typedef struct _USBH_Class {
-	const char* Name;
-	uint8_t ClassCode;
-	USBH_StatusTypeDef  (*Init)        (struct _USBH_HandleTypeDef *phost);
-	USBH_StatusTypeDef  (*DeInit)      (struct _USBH_HandleTypeDef *phost);
-	USBH_StatusTypeDef  (*Requests)    (struct _USBH_HandleTypeDef *phost);
-	USBH_StatusTypeDef  (*BgndProcess) (struct _USBH_HandleTypeDef *phost);
-	USBH_StatusTypeDef  (*SOFProcess)  (struct _USBH_HandleTypeDef *phost);
-	void *pData;
-	USBH_DriverKindTypeDef Type;
-	struct _USBH_Class* Next; // used in a chain list of drivers
-} USBH_ClassTypeDef;
+
+
 
 /* USB Host Class structure */
 
 
 
-typedef struct {
-	__IO  HOST_StateTypeDef 	PrevState;
-	__IO  HOST_StateTypeDef 	State;
-	int Value;
-	void* Data;
-} USBH_StateInfoTypeDef;
+
 
 // Memmory is becomming an issue but since we use alot of static memory
 // mabye we can get away with a static memory allocator?
@@ -502,25 +559,24 @@ typedef struct {
 /* USB Host handle structure */
 typedef struct _USBH_HandleTypeDef
 {
-  HOST_StateTypeDef			StateStackgSave;
+	// This is the buffer used for all packet data if a buffer
+	// is not supplyed, it can be used for anything
+  uint8_t                   PacketData[USBH_MAX_DATA_BUFFER];
   USBH_StateInfoTypeDef		StateStack[MAX_STATE_STACK];
+  __IO PORT_StateTypeDef    port_state; // raw port state, turn on the power etc
+  USBH_SpeedTypeDef			port_speed;	// current port speed
   uint8_t					StackPos;
   USBH_HostStatusTypeDef	HostStatus;
-  StaticMemTypeDef			Memory;
 
   int16_t 					StringLangSupport[3];
-
-  USBH_URBChangeCallback	URBChangeCallback;
-  __IO CMD_StateTypeDef     RequestState;
-  USBH_CallbackTypeDef		RequestCompletedCallback;
-  USBH_CallbackTypeDef		RequestErrorCallback;
   USBH_CtrlTypeDef      	Control;
-  USBH_DeviceTypeDef    	device;
+  uint8_t					DeviceCount;
+  USBH_DeviceTypeDef    	Devices[127];
   USBH_ClassTypeDef*    	pClass[USBH_MAX_NUM_SUPPORTED_CLASS];
 
   USBH_ClassTypeDef*    	pActiveClass;
   uint32_t              	ClassNumber;
-  uint32_t              	Pipes[15];
+  USBH_PipeHandleTypeDef    Pipes[15];
   __IO uint32_t         	Timer;
   uint8_t               	id;
   void*                 	pData;

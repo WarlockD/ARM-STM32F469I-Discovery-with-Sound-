@@ -42,6 +42,8 @@
   */
 
 #include "fatfs.h"
+#include <sys/time.h>
+#include <sys/times.h>
 
 uint8_t retSD;    /* Return value for SD */
 char SD_Path[4];  /* SD logical drive path */
@@ -72,16 +74,18 @@ DWORD get_fattime(void)
   /* USER CODE BEGIN get_fattime */
 	RTC_TimeTypeDef time;
 	RTC_DateTypeDef date;
-
-//	HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
-	DWORD systime=0;
-	systime |= (date.Year - 1980) << 25;
-	systime |= date.Month << 21;
-	systime |= date.Date << 16;
-	systime |= time.Hours << 11;
-	systime |= time.Minutes << 5;
-	systime |= time.Seconds >> 1 ;
-	return systime;
+	struct timeval tp = {0,0 };
+	gettimeofday (&tp,NULL);
+	return tp.tv_sec;
+	//HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
+	//DWORD systime=0;
+	//systime |= (date.Year - 1980) << 25;
+	//systime |= date.Month << 21;
+	//systime |= date.Date << 16;
+	//systime |= time.Hours << 11;
+	//systime |= time.Minutes << 5;
+	//systime |= time.Seconds >> 1 ;
+//	return systime;
   //return 0;
   /* USER CODE END get_fattime */  
 }

@@ -36,7 +36,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_conf.h"
 #include "usbh_def.h"
-#include "usbh_ioreq.h"
 #include "usbh_pipes.h"
 #include "usbh_ctlreq.h"
 
@@ -153,6 +152,8 @@ void                 USBH_Delay (uint32_t Delay);
 void                 USBH_LL_SetTimer     (USBH_HandleTypeDef *phost, uint32_t );  
 void                 USBH_LL_IncTimer     (USBH_HandleTypeDef *phost);  
 
+// debugging
+void print_buffer(uint8_t* data, size_t length);
 
 
 

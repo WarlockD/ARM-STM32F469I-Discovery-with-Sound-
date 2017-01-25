@@ -74,20 +74,21 @@ typedef struct _StringDescriptor {
 
 
 
-int USBH_StartStackProcess(USBH_HandleTypeDef* phost, HOST_StateTypeDef state, void* data, int value) {
+int USBH_StartStackProcess(USBH_HandleTypeDef* phost, USBH_DeviceTypeDef* dev, HOST_StateTypeDef state, void* data, int value) {
 	phost->StackPos++;
 	USBH_StateInfoTypeDef* stack = &phost->StateStack[phost->StackPos];
 	stack->Data = data;
+	stack->Device = dev;
 	stack->Value = value;
 	stack->PrevState = HOST_IDLE;
 	stack->State = state;
 	return phost->StackPos;
 }
-void USBH_GetStringDiscrptor(USBH_HandleTypeDef* phost, uint8_t index, const char** s) {
+void USBH_GetStringDiscrptor(USBH_HandleTypeDef* phost, USBH_DeviceTypeDef* dev, uint8_t index, const char** s) {
 	if(index == 0) *s = NULL; // save some time doing this
 	else {
 		USBH_DbgLog("USBH_GetStringDiscrptor(%i)", index);
-		USBH_StartStackProcess(phost, HOST_STACK_GET_STRING, s, index);
+		USBH_StartStackProcess(phost, dev, HOST_STACK_GET_STRING, s, index);
 	}
 }
 
@@ -100,9 +101,9 @@ void DeInitStateMachine(USBH_HandleTypeDef* phost);
   * @retval USBH_Status
   */
 
-typedef HOST_StateTypeDef(*USBH_StateCallbackTypeDef)(USBH_HandleTypeDef *phost);
+typedef HOST_StateTypeDef(*USBH_StateCallbackTypeDef)(USBH_HandleTypeDef *phost, USBH_DeviceTypeDef* dev, void* data_ptr, int value);
 #define PROCESS_ACTION(ENUM) ENUM##_Action
-#define PROCESS_ACTION_DEFINE(ENUM) static HOST_StateTypeDef PROCESS_ACTION(ENUM)(USBH_HandleTypeDef *phost)
+#define PROCESS_ACTION_DEFINE(ENUM) static HOST_StateTypeDef PROCESS_ACTION(ENUM)(USBH_HandleTypeDef *phost, USBH_DeviceTypeDef* dev, void* data_ptr, int value)
 #define PROCESS_CALL_ACTION(ENUM) CTRL_ACTION(ENUM)(phost)
 
 PROCESS_ACTION_DEFINE(HOST_STACK_GET_CFG_DESC);
@@ -111,119 +112,66 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING);
 PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING_DESC);
 
 // we are set up here to return state because an interrupt can change these two
-PROCESS_ACTION_DEFINE(HOST_IDLE) { return phost->StateStack[0].State; }
-PROCESS_ACTION_DEFINE(HOST_DEV_WAIT_FOR_ATTACHMENT){ return phost->StateStack[0].State;  }
-
-PROCESS_ACTION_DEFINE(HOST_CONNECTED){
-
-	if(phost->pUser != NULL) phost->pUser(phost, HOST_USER_CONNECTION);
-
-	// we hard the state first just in case the intterupt changes it on reset port
-	/* Wait for 200 ms after connection */
-	uint32_t ticks = HAL_GetTick()+5000; // lets wait 5 seconds
-	USBH_Delay(200); // ORDER MATTERS
-	phost->StateStack[0].State =HOST_DEV_WAIT_FOR_ATTACHMENT;
-	USBH_LL_ResetPort(phost);
-	while(phost->StateStack[0].State ==HOST_DEV_WAIT_FOR_ATTACHMENT && ticks > HAL_GetTick());
-	if(phost->StateStack[0].State == HOST_DEV_WAIT_FOR_ATTACHMENT){
-		// time out, lets reset
-		DeInitStateMachine(phost);
-		return HOST_IDLE;
-	}
-#if (USBH_USE_OS == 1)
-	osMessagePut ( phost->os_event, USBH_PORT_EVENT, 0);
-#endif
-	return HOST_DEV_ATTACHED;
-}
-// now the state machine shouldn't care about
-// the intterupts
-PROCESS_ACTION_DEFINE(HOST_DEV_ATTACHED){
-	USBH_UsrLog("USB Device Attached");
-
-   /* Wait for 100 ms after Reset */
-   USBH_Delay(100);
-
-   phost->device.speed = USBH_LL_GetSpeed(phost);
-
-
-
-   phost->Control.pipe_out = USBH_AllocPipe (phost, 0x00);
-   phost->Control.pipe_in  = USBH_AllocPipe (phost, 0x80);
-
-
-   /* Open Control pipes */
-   USBH_OpenPipe (phost,
-                  phost->Control.pipe_in,
-                  0x80,
-                  phost->device.address,
-                  phost->device.speed,
-                  USBH_EP_CONTROL,
-                  phost->Control.pipe_size);
-
-   /* Open Control pipes */
-   USBH_OpenPipe (phost,
-                  phost->Control.pipe_out,
-                  0x00,
-                  phost->device.address,
-                  phost->device.speed,
-                  USBH_EP_CONTROL,
-                  phost->Control.pipe_size);
-
-#if (USBH_USE_OS == 1)
-   osMessagePut ( phost->os_event, USBH_PORT_EVENT, 0);
-#endif
-   return HOST_ENUMERATION;
-}
-PROCESS_ACTION_DEFINE(HOST_DEV_DISCONNECTED){
-	DeInitStateMachine(phost);
-
-	/* Re-Initilaize Host for new Enumeration */
-	if(phost->pActiveClass != NULL)
-	{
-	  phost->pActiveClass->DeInit(phost);
-	  phost->pActiveClass = NULL;
+PROCESS_ACTION_DEFINE(HOST_IDLE) { return HOST_IDLE; }
+PROCESS_ACTION_DEFINE(HOST_FINISHED) {
+	if(phost->StackPos > 0){
+		printf("%*s", phost->StackPos*3, "");
+		USBH_DbgLog("POP STATE %i", phost->StackPos);
+		--phost->StackPos; // back a state
 	}
 	return HOST_IDLE;
 }
+
+
 // PROCESS_ACTION_DEFINE(HOST_DETECT_DEVICE_SPEED) { return USBH_BUSY;} // not used
 PROCESS_ACTION_DEFINE(HOST_ENUMERATION){
+	USBH_UsrLog("USB Device Attached");
+
+	   /* Wait for 100 ms after Reset */
+	   USBH_Delay(100);  // phost->Control.pipe_size = USBH_MPS_DEFAULT;
+	   // set up the control pipes
+		phost->Control.pipe_in->Init.EpNumber   = 0;
+		phost->Control.pipe_in->Init.Address  	 = 0x80;
+		phost->Control.pipe_in->Init.Direction 	 = PIPE_DIR_IN;
+		phost->Control.pipe_in->Init.DataType 	 = PIPE_PID_SETUP;
+		phost->Control.pipe_in->Init.EpType 	 = PIPE_EP_CONTROL;
+		phost->Control.pipe_in->Init.PacketSize  = USBH_SETUP_PKT_SIZE;
+		phost->Control.pipe_in->Init.Speed 		 = phost->port_speed;
+
+		phost->Control.pipe_out->Init.EpNumber   = 0;
+		phost->Control.pipe_out->Init.Address  	 = 0x00;
+		phost->Control.pipe_out->Init.Direction  = PIPE_DIR_OUT;
+		phost->Control.pipe_out->Init.DataType 	 = PIPE_PID_SETUP;
+		phost->Control.pipe_out->Init.EpType 	 = PIPE_EP_CONTROL;
+		phost->Control.pipe_out->Init.PacketSize = USBH_SETUP_PKT_SIZE;
+		phost->Control.pipe_out->Init.Speed 	 = phost->port_speed;
+
+	   /* Open Control pipes */
+	   USBH_OpenPipe (phost,phost->Control.pipe_in);
+	   USBH_OpenPipe (phost,phost->Control.pipe_out);
+
 	// buffer used to allocate the data
-	staticmem_init(&phost->Memory,phost->device.DescData, USBH_MAX_DATA_BUFFER);
+	staticmem_init(&dev->Memory,dev->DescData, USBH_MAX_DATA_BUFFER);
 	return ENUM_GET_DEV_DESC;
 }
 PROCESS_ACTION_DEFINE(ENUM_GET_DEV_DESC){
-	/* Get Device Desc for only 1st 8 bytes : To get EP0 MaxPacketSize */
-		if(phost->RequestState == CMD_IDLE){
-			phost->Control.Init.RequestType = USB_D2H | USB_REQ_RECIPIENT_DEVICE | USB_REQ_TYPE_STANDARD;
-			phost->Control.Init.Request  	= USB_REQ_GET_DESCRIPTOR;
-			phost->Control.Init.Value  		= USB_DESC_DEVICE;
-			phost->Control.Init.Index  		= 0;
-			phost->Control.Init.Length  	= 8;
-			phost->Control.Init.Data  		= phost->device.Data;
+	if(phost->Control.state == CTRL_SETUP){
+		phost->Control.Init.RequestType = USB_D2H | USB_REQ_RECIPIENT_DEVICE | USB_REQ_TYPE_STANDARD;
+		phost->Control.Init.Request  	= USB_REQ_GET_DESCRIPTOR;
+		phost->Control.Init.Value  		= USB_DESC_DEVICE;
+		phost->Control.Init.Index  		= 0;
+		phost->Control.Init.Length  	= 8;
+		phost->Control.Init.Data  		= phost->PacketData;
 		}
 		if (USBH_CtlReq(phost) == USBH_OK)
 		{
-			P_USBH_DevDescTypeDef* dev = (P_USBH_DevDescTypeDef*)phost->device.Data;
-			phost->Control.pipe_size = dev->bMaxPacketSize; // got the packet size
-
+			P_USBH_DevDescTypeDef* dev_desc = (P_USBH_DevDescTypeDef*)phost->PacketData;
+			phost->Control.pipe_in->Init.PacketSize = dev_desc->bMaxPacketSize; // got the packet size
+			phost->Control.pipe_out->Init.PacketSize = dev_desc->bMaxPacketSize; // got the packet size
 
 			/* modify control channels configuration for MaxPacket size */
-			USBH_OpenPipe (phost,
-							   phost->Control.pipe_in,
-							   0x80,
-							   phost->device.address,
-							   phost->device.speed,
-							   USBH_EP_CONTROL,
-							   phost->Control.pipe_size);
-
-			/* Open Control pipes */
-			USBH_OpenPipe (phost,
-							   phost->Control.pipe_out,
-							   0x00,
-							   phost->device.address,
-							   phost->device.speed,
-							   USBH_EP_CONTROL,
-							   phost->Control.pipe_size);
+			USBH_OpenPipe (phost,phost->Control.pipe_in);
+			USBH_OpenPipe (phost,phost->Control.pipe_out);
 			// should be the last time we need to modify the
 			// pipes
 			return ENUM_SET_ADDR; // do the full thing now
@@ -231,10 +179,11 @@ PROCESS_ACTION_DEFINE(ENUM_GET_DEV_DESC){
 		return ENUM_GET_DEV_DESC;
 }
 PROCESS_ACTION_DEFINE(ENUM_SET_ADDR){
-	if(phost->RequestState == CMD_IDLE){
+	if(phost->Control.state == CTRL_SETUP){
+			if(dev->address == 0) dev->address = phost->DeviceCount;
 			phost->Control.Init.RequestType = USB_H2D | USB_REQ_RECIPIENT_DEVICE |USB_REQ_TYPE_STANDARD;
 			phost->Control.Init.Request  	= USB_REQ_SET_ADDRESS;
-			phost->Control.Init.Value  		= USBH_DEVICE_ADDRESS;
+			phost->Control.Init.Value  		= dev->address ;
 			phost->Control.Init.Index  		= 0;
 			phost->Control.Init.Length  	= 0;
 			phost->Control.Init.Data  		= NULL;
@@ -242,46 +191,31 @@ PROCESS_ACTION_DEFINE(ENUM_SET_ADDR){
 	   if ( USBH_CtlReq(phost) == USBH_OK)
 	   {
 	     USBH_Delay(2);
-	     phost->device.address = USBH_DEVICE_ADDRESS;
 
 	     /* user callback for device address assigned */
-	     USBH_UsrLog("Address (#%d) assigned.", phost->device.address);
-
+	     USBH_UsrLog("Address (#%d) assigned.", dev->address);
+	     phost->Control.pipe_in->Init.Address = dev->address; // got the packet size
+	     phost->Control.pipe_out->Init.Address = dev->address; // got the packet size
 
 	     /* modify control channels to update device address */
-	     USBH_OpenPipe (phost,
-	                          phost->Control.pipe_in,
-	                          0x80,
-	                          phost->device.address,
-	                          phost->device.speed,
-	                          USBH_EP_CONTROL,
-	                          phost->Control.pipe_size);
-
-	     /* Open Control pipes */
-	     USBH_OpenPipe (phost,
-	                          phost->Control.pipe_out,
-	                          0x00,
-	                          phost->device.address,
-	                          phost->device.speed,
-	                          USBH_EP_CONTROL,
-	                          phost->Control.pipe_size);
+	     USBH_OpenPipe (phost,phost->Control.pipe_in);
+	     USBH_OpenPipe (phost,phost->Control.pipe_out);
 
 	     return ENUM_GET_STRING_LANGS;
 	   }
 	   return ENUM_SET_ADDR;
 }
 PROCESS_ACTION_DEFINE(ENUM_GET_STRING_LANGS){
-	if(phost->RequestState == CMD_IDLE){
-
+	if(phost->Control.state == CTRL_SETUP){
 		phost->Control.Init.RequestType  = USB_D2H | USB_REQ_RECIPIENT_DEVICE | USB_REQ_TYPE_STANDARD;
 		phost->Control.Init.Request = USB_REQ_GET_DESCRIPTOR;
 		phost->Control.Init.Value= USB_DESC_STRING;
 		phost->Control.Init.Index = 0;
 		phost->Control.Init.Length =0xff;
-		phost->Control.Init.Data = phost->device.Data;
+		phost->Control.Init.Data = phost->PacketData;
 	}
 	if(USBH_CtlReq(phost) == USBH_OK){
-		memcpy(&phost->StringLangSupport,phost->device.Data+2,sizeof(uint16_t)*3);
+		memcpy(&phost->StringLangSupport,phost->PacketData+2,sizeof(uint16_t)*3);
 		USBH_UsrLog("String Languages 0x%4.4X, 0x%4.4X, 0x%4.4X",phost->StringLangSupport[0],phost->StringLangSupport[1],phost->StringLangSupport[2]);
 		return ENUM_GET_FULL_DEV_DESC;
 	}
@@ -290,43 +224,43 @@ PROCESS_ACTION_DEFINE(ENUM_GET_STRING_LANGS){
 
 
 PROCESS_ACTION_DEFINE(ENUM_GET_FULL_DEV_DESC){
-	if(phost->RequestState == CMD_IDLE){
+	if(phost->Control.state == CTRL_SETUP){
 		phost->Control.Init.RequestType = USB_D2H | USB_REQ_RECIPIENT_DEVICE | USB_REQ_TYPE_STANDARD;
 		phost->Control.Init.Request  	= USB_REQ_GET_DESCRIPTOR;
 		phost->Control.Init.Value  		= USB_DESC_DEVICE;
 		phost->Control.Init.Index  		= 0;
 		phost->Control.Init.Length  	= USB_DEVICE_DESC_SIZE;
-		phost->Control.Init.Data  		= phost->device.Data;
+		phost->Control.Init.Data  		= phost->PacketData;
 	}
     /* Get FULL Device Desc and parse it */
     if(USBH_CtlReq(phost)== USBH_OK)
     {
-    	P_USBH_DevDescTypeDef* pdev = (P_USBH_DevDescTypeDef*)phost->device.Data;
-    	USBH_DevDescTypeDef* dev = (USBH_DevDescTypeDef*)staticmem_alloc(&phost->Memory,sizeof(USBH_DevDescTypeDef));
-    	phost->device.DevDesc = dev;
-    	dev->USB = pdev->bcdUSB;
-    	dev->DeviceClass = pdev->bDeviceClass;
-    	dev->DeviceSubClass = pdev->bDeviceSubClass;
-    	dev->DeviceProtocol = pdev->bDeviceProtocol;
-    	dev->MaxPacketSize = pdev->bMaxPacketSize;
-    	dev->VendorID = pdev->idVendor;
-    	dev->ProductID = pdev->idProduct;
-    	dev->Device = pdev->bcdDevice;
+    	P_USBH_DevDescTypeDef* pdev = (P_USBH_DevDescTypeDef*)phost->PacketData;
+    	USBH_DevDescTypeDef* dev_desc = (USBH_DevDescTypeDef*)staticmem_alloc(&dev->Memory,sizeof(USBH_DevDescTypeDef),NULL);
+    	dev->DevDesc = dev_desc;
+    	dev_desc->USB = pdev->bcdUSB;
+    	dev_desc->DeviceClass = pdev->bDeviceClass;
+    	dev_desc->DeviceSubClass = pdev->bDeviceSubClass;
+    	dev_desc->DeviceProtocol = pdev->bDeviceProtocol;
+    	dev_desc->MaxPacketSize = pdev->bMaxPacketSize;
+    	dev_desc->VendorID = pdev->idVendor;
+    	dev_desc->ProductID = pdev->idProduct;
+    	dev_desc->Device = pdev->bcdDevice;
 
-    	dev->NumConfigurations = pdev->bNumConfigurations;
-    	dev->Configurations = (USBH_CfgDescTypeDef*)staticmem_alloc(&phost->Memory,sizeof(USBH_CfgDescTypeDef)*dev->NumConfigurations);
-    	USBH_UsrLog("PID: %xh", dev->ProductID );
-    	USBH_UsrLog("VID: %xh", dev->VendorID );
-    	USBH_UsrLog("Configurations: %i", dev->NumConfigurations );
-		phost->device.CfgDesc = &dev->Configurations[0];
+    	dev_desc->NumConfigurations = pdev->bNumConfigurations;
+    	dev_desc->Configurations = (USBH_CfgDescTypeDef*)staticmem_alloc(&dev->Memory,sizeof(USBH_CfgDescTypeDef)*dev_desc->NumConfigurations,NULL);
+    	USBH_UsrLog("PID: %xh", dev_desc->ProductID );
+    	USBH_UsrLog("VID: %xh", dev_desc->VendorID );
+    	USBH_UsrLog("Configurations: %i", dev_desc->NumConfigurations );
+		dev->CfgDesc = &dev_desc->Configurations[0];
 
 
-    	for(int c=0;c < phost->device.DevDesc->NumConfigurations; c++){
-    		USBH_StartStackProcess(phost, HOST_STACK_GET_CFG_DESC, &dev->Configurations[c], c);
+    	for(int c=0;c < dev_desc->NumConfigurations; c++){
+    		USBH_StartStackProcess(phost, dev, HOST_STACK_GET_CFG_DESC, &dev_desc->Configurations[c], c);
     	}
-    	USBH_GetStringDiscrptor(phost,pdev->iManufacturer, &dev->Manufacturer );
-    	USBH_GetStringDiscrptor(phost,pdev->iProduct, &dev->Product );
-    	USBH_GetStringDiscrptor(phost,pdev->iSerialNumber, &dev->SerialNumber );
+    	USBH_GetStringDiscrptor(phost,pdev->iManufacturer, dev, &dev_desc->Manufacturer );
+    	USBH_GetStringDiscrptor(phost,pdev->iProduct, dev, &dev_desc->Product );
+    	USBH_GetStringDiscrptor(phost,pdev->iSerialNumber, dev, &dev_desc->SerialNumber );
     	return HOST_ENUMERATION_FINISHED; // next state
     }
     return ENUM_GET_FULL_DEV_DESC;
@@ -337,10 +271,9 @@ PROCESS_ACTION_DEFINE(ENUM_GET_FULL_DEV_DESC){
 PROCESS_ACTION_DEFINE(HOST_ENUMERATION_FINISHED){
 	 /* user callback for end of device basic enumeration */
 	 USBH_UsrLog ("Enumeration done.");
-	 USBH_Print_DevDesc(0, phost->device.DevDesc);
-	 USBH_Print_FullCfgDesc(0, phost->device.CfgDesc); // debug print the cfg
-	 phost->device.current_interface = 0;
-	  if(phost->device.DevDesc->NumConfigurations == 1)
+	 USBH_Print_DevDesc(0, dev->DevDesc);
+	 USBH_Print_FullCfgDesc(0, dev->CfgDesc); // debug print the cfg
+	  if(dev->DevDesc->NumConfigurations == 1)
 	  {
 		  USBH_UsrLog ("This device has only 1 configuration.");
 		  return HOST_SET_CONFIGURATION;
@@ -360,7 +293,7 @@ PROCESS_ACTION_DEFINE(HOST_INPUT){
 }
 PROCESS_ACTION_DEFINE(HOST_SET_CONFIGURATION){
 	/* set configuration */
-	if (USBH_SetCfg(phost, phost->device.CfgDesc->ConfigurationValue) == USBH_OK)
+	if (USBH_SetCfg(phost, dev->CfgDesc->ConfigurationValue) == USBH_OK)
 	{
 	  USBH_UsrLog ("Default configuration set.");
 	}
@@ -377,7 +310,7 @@ PROCESS_ACTION_DEFINE(HOST_CHECK_CLASS){
 
 	      for (int idx = 0; idx < USBH_MAX_NUM_SUPPORTED_CLASS ; idx ++)
 	      {
-	        if(phost->pClass[idx]->ClassCode == phost->device.CfgDesc->Interfaces[0].InterfaceClass)
+	        if(phost->pClass[idx]->ClassCode == dev->CfgDesc->Interfaces[0].InterfaceClass)
 	        {
 	          phost->pActiveClass = phost->pClass[idx];
 	        }
@@ -385,7 +318,7 @@ PROCESS_ACTION_DEFINE(HOST_CHECK_CLASS){
 
 	      if(phost->pActiveClass != NULL)
 	      {
-	        if(phost->pActiveClass->Init(phost)== USBH_OK)
+	        if(phost->pActiveClass->Init(phost,dev)== USBH_OK)
 	        {
 	          USBH_UsrLog ("%s class started.", phost->pActiveClass->Name);
 
@@ -404,7 +337,7 @@ PROCESS_ACTION_DEFINE(HOST_CLASS_REQUEST){
 	USBH_StatusTypeDef status = USBH_BUSY;
     if(phost->pActiveClass != NULL)
     {
-    	USBH_StatusTypeDef status = phost->pActiveClass->Requests(phost);
+    	USBH_StatusTypeDef status = phost->pActiveClass->Requests(phost,dev);
 
       if(status == USBH_OK) return HOST_CLASS;
     }
@@ -413,13 +346,16 @@ PROCESS_ACTION_DEFINE(HOST_CLASS_REQUEST){
 }
 PROCESS_ACTION_DEFINE(HOST_CLASS){
     /* process class state machine */
-    if(phost->pActiveClass != NULL)
-      phost->pActiveClass->BgndProcess(phost);
-    else HOST_ABORT_STATE;
+    if(phost->pActiveClass == NULL) return HOST_ABORT_STATE;
+     phost->pActiveClass->BgndProcess(phost,dev);
     return HOST_CLASS;
 }
 
-PROCESS_ACTION_DEFINE(HOST_ABORT_STATE) { return USBH_BUSY; }
+PROCESS_ACTION_DEFINE(HOST_ABORT_STATE) {
+	// deinit till we restart
+	return HOST_ABORT_STATE;
+}
+
 
 
 typedef struct {
@@ -434,11 +370,6 @@ typedef struct {
 static const PROCESS_StateTableEntry process_state_table[USBH_MAX_STATES]={
 	PROCESS_TABLE_ENTRY(HOST_IDLE),
 	PROCESS_TABLE_NULL(HOST_FINISHED),
-	PROCESS_TABLE_ENTRY(HOST_CONNECTED),
-	PROCESS_TABLE_ENTRY(HOST_DEV_WAIT_FOR_ATTACHMENT),
-	PROCESS_TABLE_ENTRY(HOST_DEV_ATTACHED),
-	PROCESS_TABLE_ENTRY(HOST_DEV_DISCONNECTED),
-	PROCESS_TABLE_NULL(HOST_DETECT_DEVICE_SPEED),
 	PROCESS_TABLE_ENTRY(HOST_ENUMERATION),
 		PROCESS_TABLE_ENTRY(ENUM_GET_DEV_DESC),
 		PROCESS_TABLE_ENTRY(ENUM_SET_ADDR),
@@ -463,17 +394,17 @@ const char* HOST_StateTypeToString(HOST_StateTypeDef t){
 	return e->name;
 }
 
-static void ParseCfgDesc(USBH_HandleTypeDef* phost, USBH_CfgDescTypeDef* cfg, uint8_t*data) {
+static void ParseCfgDesc(USBH_HandleTypeDef* phost, USBH_DeviceTypeDef* dev, USBH_CfgDescTypeDef* cfg, uint8_t*data) {
 	P_USBH_CfgDescTypeDef* pcfg = (P_USBH_CfgDescTypeDef*)data;
 	uint8_t* end = data + pcfg->wTotalLength;
 	data += pcfg->Header.bLength;
 	assert(pcfg->Header.bDescriptorType == USB_DESC_TYPE_CONFIGURATION);
 	cfg->NumInterfaces = pcfg->bNumInterfaces;
 	cfg->ConfigurationValue = pcfg->bConfigurationValue;
-	USBH_GetStringDiscrptor(phost,pcfg->iConfiguration, &cfg->Configuration );
+	USBH_GetStringDiscrptor(phost,dev, pcfg->iConfiguration, &cfg->Configuration );
 	cfg->Attributes = pcfg->bmAttributes;
 	cfg->MaxPower = pcfg->bMaxPower;
-	cfg->Interfaces = (USBH_InterfaceDescTypeDef*)staticmem_alloc(&phost->Memory,sizeof(USBH_InterfaceDescTypeDef)*cfg->NumInterfaces);
+	cfg->Interfaces = (USBH_InterfaceDescTypeDef*)staticmem_alloc(&dev->Memory,sizeof(USBH_InterfaceDescTypeDef)*cfg->NumInterfaces,NULL);
 	// cause I was burned by the order the descrptors were in, I need to do a full parse of
 	// all the data
 	USBH_InterfaceDescTypeDef* iface = &cfg->Interfaces[0];
@@ -496,9 +427,9 @@ static void ParseCfgDesc(USBH_HandleTypeDef* phost, USBH_CfgDescTypeDef* cfg, ui
 			iface->InterfaceClass = pface->bInterfaceClass;
 			iface->InterfaceSubClass = pface->bInterfaceSubClass;
 			iface->InterfaceProtocol = pface->bInterfaceProtocol;
-			USBH_GetStringDiscrptor(phost,pface->iInterface, &iface->Interface );
+			USBH_GetStringDiscrptor(phost,dev, pface->iInterface, &iface->Interface );
 			iface->InterfaceNumber = pface->bInterfaceNumber;
-			iface->Endpoints = (USBH_EpDescTypeDef*)staticmem_alloc(&phost->Memory,sizeof(USBH_EpDescTypeDef)*iface->NumEndpoints);
+			iface->Endpoints = (USBH_EpDescTypeDef*)staticmem_alloc(&dev->Memory,sizeof(USBH_EpDescTypeDef)*iface->NumEndpoints,NULL);
 			iface_count++;
 			ep_count=0; // clear ep count for loading
 			break;
@@ -526,17 +457,17 @@ static void ParseCfgDesc(USBH_HandleTypeDef* phost, USBH_CfgDescTypeDef* cfg, ui
 
 PROCESS_ACTION_DEFINE(HOST_STACK_GET_CFG_DESC){
 	USBH_StatusTypeDef status;
-	if(phost->RequestState == CMD_IDLE){
+	if(phost->Control.state == CTRL_SETUP){
 			USBH_StateInfoTypeDef* current = USBH_CurrentState(phost);
 			phost->Control.Init.RequestType = USB_D2H | USB_REQ_RECIPIENT_DEVICE | USB_REQ_TYPE_STANDARD;
 			phost->Control.Init.Request  	= USB_REQ_GET_DESCRIPTOR;
 			phost->Control.Init.Value  		= USB_DESC_CONFIGURATION;
 			phost->Control.Init.Index  		= current->Value;
 			phost->Control.Init.Length  	= USB_CONFIGURATION_DESC_SIZE;
-			phost->Control.Init.Data  		= phost->device.Data;
+			phost->Control.Init.Data  		= phost->PacketData;
 	}
 	if((status = USBH_CtlReq(phost)) == USBH_OK) {
-		P_USBH_CfgDescTypeDef* pdev = (P_USBH_CfgDescTypeDef*)phost->device.Data;
+		P_USBH_CfgDescTypeDef* pdev = (P_USBH_CfgDescTypeDef*)phost->PacketData;
 		phost->Control.Init.Length  	= pdev->wTotalLength;
 		//USBH_CtlReq(phost); // start it up again with the new length
 		return HOST_STACK_GET_FULL_CFG_DESC;
@@ -551,8 +482,8 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_FULL_CFG_DESC){
 		USBH_StateInfoTypeDef* current = USBH_CurrentState(phost);
 		print_buffer(phost->Control.Init.Data, phost->Control.Init.Length);
 		USBH_CfgDescTypeDef* cfg = (USBH_CfgDescTypeDef*)current->Data;
-		ParseCfgDesc(phost,cfg, phost->device.Data);
-		phost->device.CfgDesc =  cfg;
+		ParseCfgDesc(phost, dev, cfg, phost->PacketData);
+		dev->CfgDesc =  cfg;
 		return HOST_FINISHED;
 	}
 	return HOST_STACK_GET_FULL_CFG_DESC;
@@ -566,7 +497,7 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING){
 		return USBH_FAIL;
 	}
 	// search for it
-	USBH_DescStringCacheTypeDef* str = phost->device.StringDesc;
+	USBH_DescStringCacheTypeDef* str = dev->StringDesc;
 	while(str) {
 		if(string_index == str->Index) {
 			*c_str = str->Data;
@@ -579,7 +510,7 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING){
 	phost->Control.Init.Request=  USB_REQ_GET_DESCRIPTOR;
 	phost->Control.Init.Value=  (0x03 << 8) | string_index; //USB_DESC_STRING | string_index;
 	phost->Control.Init.Index= phost->StringLangSupport[0];
-	phost->Control.Init.Data  = phost->device.Data;
+	phost->Control.Init.Data  = phost->PacketData;
 	phost->Control.Init.Length = 0xFF;
 	return HOST_STACK_GET_STRING_DESC;
 }
@@ -590,15 +521,15 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING_DESC){
 		USBH_StateInfoTypeDef* current = USBH_CurrentState(phost);
 		uint8_t string_index= current->Value;
 		//const char** c_str = (const char**)phost->Current->Data;
-		uint8_t len = (phost->device.Data[0] -2)/2;
-		USBH_DescStringCacheTypeDef* str = staticmem_alloc(&phost->Memory,sizeof(USBH_DescStringCacheTypeDef)+ len);
+		uint8_t len = (phost->PacketData[0] -2)/2;
+		USBH_DescStringCacheTypeDef* str = staticmem_alloc(&dev->Memory,sizeof(USBH_DescStringCacheTypeDef)+ len,NULL);
 		str->Index = string_index;
 		str->Length = len;
-		str->Next = phost->device.StringDesc;
-		phost->device.StringDesc = str; // link
+		str->Next = dev->StringDesc;
+		dev->StringDesc = str; // link
 		// now copy, 16-bit unicode
 		char* c_str = str->Data;
-		char* u_str = phost->device.Data+2;
+		char* u_str = phost->PacketData+2;
 		while(len--) {
 			*c_str = *u_str;
 			c_str++;
@@ -613,30 +544,47 @@ PROCESS_ACTION_DEFINE(HOST_STACK_GET_STRING_DESC){
 	}
 	return HOST_FINISHED;
 }
-#define SWAP_STATE(A,B) { HOST_StateTypeDef s = (A); (A) = (B); (B) = s; }
-
-
-
 
 USBH_StatusTypeDef  USBH_Process(USBH_HandleTypeDef *phost){
-	USBH_StateInfoTypeDef* current = &phost->StateStack[phost->StackPos];
-	HOST_StateTypeDef prev = current->State;
-	if(prev !=process_state_table[prev].value){
-		USBH_UsrLog("USBH_Process BAD ORDER! %s != %s", HOST_StateTypeToString(prev),HOST_StateTypeToString(process_state_table[prev].value));
-		while(1);
+		switch(phost->port_state){
+	case HOST_PORT_IDLE:
+	{
+		USBH_StateInfoTypeDef* current = &phost->StateStack[phost->StackPos];
+			HOST_StateTypeDef prev = current->State;
+			if(prev !=process_state_table[prev].value){
+				USBH_UsrLog("USBH_Process BAD ORDER! %s != %s", HOST_StateTypeToString(prev),HOST_StateTypeToString(process_state_table[prev].value));
+				while(1);
+			}
+			current->State = process_state_table[current->State].action(phost,current->Device,current->Data,current->Value);
+			if(current->State != prev){
+				// debug change state
+				if(phost->StackPos > 0) printf("%*s", phost->StackPos*3, "");
+				USBH_DbgLog("%i: %s -> %s", phost->StackPos, HOST_StateTypeToString(prev),HOST_StateTypeToString(current->State));
+			}
+			current->PrevState = prev;
 	}
-	current->State = process_state_table[current->State].action(phost);
-	if(current->State != prev){
-		// debug change state
-		if(phost->StackPos > 0) printf("%*s", phost->StackPos*3, "");
-		USBH_DbgLog("%i: %s -> %s", phost->StackPos, HOST_StateTypeToString(prev),HOST_StateTypeToString(current->State));
+	break;
+		break; // doing nothing
+	case HOST_PORT_CONNECTED:
+	{
+		phost->port_state =HOST_PORT_WAIT_FOR_ATTACHMENT;
+		USBH_Delay(200); // ORDER MATTERS
+		USBH_LL_ResetPort(phost);
+		break;
 	}
-	current->PrevState = prev;
-	if(current->State == HOST_FINISHED) {
-		assert(phost->StackPos > 0);
-		printf("%*s", phost->StackPos*3, "");
-		USBH_DbgLog("POP STATE %i", phost->StackPos);
-		--phost->StackPos; // back a state
+	case HOST_PORT_WAIT_FOR_ATTACHMENT: // wait for state change
+		phost->port_state = HOST_PORT_IDLE;
+		phost->StateStack[0].State = HOST_ENUMERATION; // start it up
+		phost->StateStack[0].Device = &phost->Devices[0];
+		phost->DeviceCount=1;
+		phost->StackPos = 0;
+		phost->port_speed = USBH_LL_GetSpeed(phost);
+		if(!phost->Control.pipe_in) USBH_AllocPipe(phost,&phost->Control.pipe_in);
+		if(!phost->Control.pipe_out) USBH_AllocPipe(phost,&phost->Control.pipe_out);
+		break;
+	case HOST_PORT_DISCONNECTED:// wait for connect callback
+	case HOST_PORT_ACTIVE: // wait for state change
+	default: break;
 	}
 
 	return USBH_BUSY;

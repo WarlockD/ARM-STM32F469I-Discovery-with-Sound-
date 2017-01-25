@@ -135,31 +135,7 @@ caddr_t _sbrk_sram(int incr)
 caddr_t _sbrk(int incr){
 	return _sbrk_sdram(incr);
 }
-/*
- * _gettimeofday primitive (Stub function)
- * */
-int _gettimeofday (struct timeval * tp, struct timezone * tzp)
-{
-  /* Return fixed data for the timezone.  */
-  if (tzp) tzp->tz_dsttime = tzp->tz_minuteswest = 0;
 
-  if(tp) {
-	  struct tm tm;
-	  time_t ret;
-	  RTC_TimeTypeDef time;
-	  RTC_DateTypeDef date;
-	//  HAL_RTCEx_GetTimeStamp(&hrtc, &time, &date,0);
-	  tm.tm_sec = time.Seconds;
-	  tm.tm_min = time.Minutes;
-	  tm.tm_hour = time.Hours;
-	  tm.tm_wday = date.WeekDay;
-	  tm.tm_mday =0;
-	  tm.tm_mon = date.Month;
-      tp->tv_sec = mktime(&tm);
-	  tp->tv_usec = 0;
-  }
-  return 0;
-}
 void initialise_monitor_handles()
 {
 }
@@ -248,19 +224,21 @@ int _unlink(char *name)
 	errno = ENOENT;
 	return -1;
 }
+#if 0
 
-int _times(struct tms *buf)
+_PTR	_EXFUN_NOTHROW(_malloc_r,(struct _reent *, size_t));
+_PTR	_EXFUN_NOTHROW(_calloc_r,(struct _reent *, size_t, size_t));
+_VOID	_EXFUN_NOTHROW(_free_r,(struct _reent *, _PTR));
+_PTR	_EXFUN_NOTHROW(_realloc_r,(struct _reent *, _PTR, size_t));
+_VOID	_EXFUN(_mstats_r,(struct _reent *, char *));
+
+int	_EXFUN(_system_r,(struct _reent *, const char *));
+void *
+_malloc_r (struct _reent *ptr, size_t size)
 {
-	if(buf) {
-		buf->tms_stime  = HAL_GetTick()/1000;
-		buf->tms_cstime  = 0;
-		buf->tms_stime = 0;
-		buf->tms_cstime = 0;
-		return 0;
-	}
-	return -1;
+  return malloc (size);
 }
-
+#endif
 int _stat(char *file, struct stat *st)
 {
 	st->st_mode = S_IFCHR;

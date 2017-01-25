@@ -312,7 +312,7 @@ static  const  uint8_t  HID_KEYBRD_Codes[] = {
   * @param  phost: Host handle
   * @retval USBH Status
   */
-USBH_StatusTypeDef USBH_HID_KeybdInit(HID_HandleTypeDef *HID_Handle)
+USBH_StatusTypeDef USBH_HID_KeybdInit(HID_HandleTypeDef *HID_Handle,USBH_DeviceTypeDef* dev)
 {
   uint32_t x;
 
@@ -344,7 +344,7 @@ USBH_StatusTypeDef USBH_HID_KeybdInit(HID_HandleTypeDef *HID_Handle)
   * @param  phost: Host handle
   * @retval keyboard information
   */
-HID_KEYBD_Info_TypeDef *USBH_HID_GetKeybdInfo(USBH_HandleTypeDef *phost)
+HID_KEYBD_Info_TypeDef *USBH_HID_GetKeybdInfo(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {
   if(USBH_HID_KeybdDecode(phost) == USBH_OK)
  {
@@ -362,7 +362,7 @@ HID_KEYBD_Info_TypeDef *USBH_HID_GetKeybdInfo(USBH_HandleTypeDef *phost)
   * @param  phost: Host handle
   * @retval USBH Status
   */
-static USBH_StatusTypeDef USBH_HID_KeybdDecode(USBH_HandleTypeDef *phost)
+static USBH_StatusTypeDef USBH_HID_KeybdDecode(USBH_HandleTypeDef *phost,USBH_DeviceTypeDef* dev)
 {
   uint8_t x;
   

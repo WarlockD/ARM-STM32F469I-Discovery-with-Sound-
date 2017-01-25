@@ -58,9 +58,9 @@ void staticmem_free(StaticMemTypeDef* m, void *ptr)
 	 }
 }
 
-void *staticmem_alloc(StaticMemTypeDef* m, size_t size )
+void *staticmem_alloc(StaticMemTypeDef* m, size_t size , void**user)
 {
-	size_t fsize;
+	//size_t fsize;
 	uint32_t *p;
 	if( size == 0 ) return 0;
 
@@ -78,14 +78,14 @@ void *staticmem_alloc(StaticMemTypeDef* m, size_t size )
 	return (void*)p; // easy and simple
 }
 void *staticmem_realloc(StaticMemTypeDef* m, void* ptr, size_t size){
-	if( ptr == NULL) return staticmem_alloc(m,size);
+	if( ptr == NULL) return staticmem_alloc(m,size,NULL);
 	uint32_t* mptr = ((uint32_t*)ptr) - 1;
 	assert(mptr + *mptr != m->Free); // not the last ptr
 	// it is so just free it and reallocate it
 	 m->FreeMemory += *mptr;
 	 *mptr = m->FreeMemory;
 	 m->Free = mptr;
-	 return staticmem_alloc(m,size);
+	 return staticmem_alloc(m,size,NULL);
 }
 void *staticmem_alloc2(StaticMemTypeDef* m, size_t size )
 {
@@ -144,13 +144,17 @@ void staticmem_reset(StaticMemTypeDef* m) {
   * @param  size: Fifo Size
   * @retval none
   */
-void fifo_init(FIFO_TypeDef * f, uint8_t * buf, uint16_t size)
-{
-     f->lock = 0;
-     f->size = size;
-     f->buf = buf;
-     f->head = f->tail = 0;
+
+
+
+void fifo_init_static(FIFO_TypeDef * f, uint8_t * buf, uint16_t size) {
+	f->lock = 0;
+	f->size = size;
+	f->buf = buf;
+	f->head = f->tail = 0;
 }
+
+
 
 uint16_t  fifo_read(FIFO_TypeDef * f, void * buf, uint16_t  nbytes)
 {
