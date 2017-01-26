@@ -308,23 +308,23 @@ static void USBStateCallback(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* p
 		break;
 	case USBH_URB_STALL:
 
-	//	USBH_ErrLog("USBH_URB_STALL(%i)  Last State=%s Current_State=%s",(int)chnum,
-	//			CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
+		USBH_ErrLog("USBH_URB_STALL(%i)  Last State=%s Current_State=%s",(int)pipe->Pipe,
+				CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
 		phost->Control.state = CTRL_STALLED;
 		break;
 	case USBH_URB_NOTREADY: // NAK
-		//USBH_ErrLog("USBH_URB_NOTREADY(%i)  Last State=%s Current_State=%s",(int)chnum,
-	//				CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
+		USBH_ErrLog("USBH_URB_NOTREADY(%i)  Last State=%s Current_State=%s",(int)pipe->Pipe,
+					CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
 		phost->Control.state = phost->Control.prev_state;
 		break;
 	case USBH_URB_ERROR: // NAK
-		//USBH_ErrLog("USBH_URB_ERROR(%i)  Last State=%s Current_State=%s",(int)chnum,
-		//				CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
+		USBH_ErrLog("USBH_URB_ERROR(%i)  Last State=%s Current_State=%s",(int)pipe->Pipe,
+						CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
 		phost->Control.state = CTRL_ERROR;
 		break;
 	case USBH_URB_NYET: // NYET?
-	//	USBH_ErrLog("USBH_URB_NYET(%i)  Last State=%s Current_State=%s",(int)chnum,
-		//					CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
+		USBH_ErrLog("USBH_URB_NYET(%i)  Last State=%s Current_State=%s",(int)pipe->Pipe,
+							CTRLStateToString(phost->Control.prev_state),CTRLStateToString(phost->Control.state));
 		phost->Control.state = CTRL_ERROR;
 				break;
 	default:
@@ -332,69 +332,214 @@ static void USBStateCallback(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* p
 	}
 }
 
+#define CONTROL_LC phost->Control.lc
+#define PIPE_THREAD_NAME(NAME) NAME##_PIPEThread
+#define PIPE_THREAD_BEGIN(NAME) char PIPE_THREAD_NAME(NAME)(USBH_HandleTypeDef*phost) { LC_RESUME(CONTROL_LC);
+#define PIPE_THREAD_END() LC_END(CONTROL_LC); LC_INIT(CONTROL_LC); return USB_ENDED; }
+#define PIPE_EXIT() do{ LC_INIT(CONTROL_LC); return USB_EXITED;  } while(0)
+#define PIPE_WAIT_UNTILL(condition) do { LC_SET(CONTROL_LC); if(!(condition))return USB_WAITING; } while(0)
+#define PIPE_WAIT_WHILE(cond)  PIPE_WAIT_UNTILL(!(cond))
+#define PIPE_WAIT_UTILL_IDLE(PIPE) PIPE_WAIT_UNTILL((PIPE)->state == PIPE_IDLE); if((PIPE)->urb_state != USBH_URB_DONE) return USB_EXITED;
+#define PIPE_SCHEDULE(f) ((f) < USB_EXITED)
 
-USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
-{
-	if(phost->port_state == HOST_PORT_ACTIVE) return USBH_BUSY;
-	USBH_StatusTypeDef status=USBH_BUSY;
-	switch(phost->Control.state) {
-	case CTRL_SETUP:
-		phost->Control.timer = phost->Timer;
-		phost->Control.pipe_in->Callback = USBStateCallback;
-		phost->Control.pipe_out->Callback = USBStateCallback; // set the callbacks
-		phost->Control.pipe_in->Init.EpType  = PIPE_EP_CONTROL;
-		phost->Control.pipe_out->Init.EpType  = PIPE_EP_CONTROL; // and the types
+void CtlSetup(USBH_HandleTypeDef *phost){
+	phost->Control.timer = phost->Timer;
+	phost->Control.pipe_in->Callback = USBStateCallback;
+	phost->Control.pipe_out->Callback = USBStateCallback; // set the callbacks
+	phost->Control.pipe_in->Init.EpType  = PIPE_EP_CONTROL;
+	phost->Control.pipe_out->Init.EpType  = PIPE_EP_CONTROL; // and the types
 
 
-		phost->Control.setup.b.bmRequestType = phost->Control.Init.RequestType;
-		phost->Control.setup.b.bRequest = phost->Control.Init.Request;
-		phost->Control.setup.b.wValue.w = phost->Control.Init.Value;
-		phost->Control.setup.b.wIndex.w = phost->Control.Init.Index;
-		phost->Control.setup.b.wLength.w = phost->Control.Init.Length;
-		// set up the packet
-		phost->Control.pipe_out->Init.DataType = PIPE_PID_SETUP;
-		phost->Control.pipe_out->Size = USBH_SETUP_PKT_SIZE;
-		phost->Control.pipe_out->Data = (uint8_t *)phost->Control.setup.d8;
+	phost->Control.setup.b.bmRequestType = phost->Control.Init.RequestType;
+	phost->Control.setup.b.bRequest = phost->Control.Init.Request;
+	phost->Control.setup.b.wValue.w = phost->Control.Init.Value;
+	phost->Control.setup.b.wIndex.w = phost->Control.Init.Index;
+	phost->Control.setup.b.wLength.w = phost->Control.Init.Length;
+	// set up the packet
+	phost->Control.pipe_out->Init.DataType = PIPE_PID_SETUP;
+	phost->Control.pipe_out->Size = USBH_SETUP_PKT_SIZE;
+	phost->Control.pipe_out->Data = (uint8_t *)phost->Control.setup.d8;
 
-		uint8_t direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
-		/* check if there is a data stage */
-		if (phost->Control.setup.b.wLength.w != 0 )
-			phost->Control.state = direction == USB_D2H ? CTRL_DATA_IN : CTRL_DATA_OUT;
-		else
-			phost->Control.state = direction == USB_D2H ? CTRL_STATUS_OUT : CTRL_STATUS_IN;
-		USBH_ProcessPipe(phost,phost->Control.pipe_out);
-		break;
-	case CTRL_DATA_IN:
-		phost->Control.timer = phost->Timer;
-		phost->Control.pipe_in->Size = phost->Control.length;
-		phost->Control.pipe_in->Data = phost->Control.data;
-		phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
-		USBH_ProcessPipe(phost,phost->Control.pipe_in);
-		phost->Control.state= CTRL_STATUS_OUT;
-		break;
-	case CTRL_DATA_OUT:
-		phost->Control.timer = phost->Timer;
-		phost->Control.pipe_out->Size = phost->Control.length;
-		phost->Control.pipe_out->Data = phost->Control.data;
-		phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
-		USBH_ProcessPipe(phost,phost->Control.pipe_out);
-		phost->Control.state= CTRL_STATUS_IN;
-		break;
-	case CTRL_STATUS_IN:
-		phost->Control.timer = phost->Timer;
-		phost->Control.pipe_in->Size = 0;
-		phost->Control.pipe_in->Data = 0;
-		phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
-		USBH_ProcessPipe(phost,phost->Control.pipe_in);
-		phost->Control.state=  CTRL_COMPLETE;
-		break;
-	case CTRL_STATUS_OUT:
-		phost->Control.timer = phost->Timer;
+	uint8_t direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
+	/* check if there is a data stage */
+	if (phost->Control.setup.b.wLength.w != 0 )
+		phost->Control.state = direction == USB_D2H ? CTRL_DATA_IN : CTRL_DATA_OUT;
+	else
+		phost->Control.state = direction == USB_D2H ? CTRL_STATUS_OUT : CTRL_STATUS_IN;
+}
+PIPE_THREAD_BEGIN(Control_Setup_Blocking)
+phost->Control.timer = phost->Timer;
+	phost->Control.state = CTRL_SETUP;
+	phost->Control.pipe_in->Init.EpType  = PIPE_EP_CONTROL;
+	phost->Control.pipe_out->Init.EpType  = PIPE_EP_CONTROL; // and the types
+	// set up the request
+	phost->Control.setup.b.bmRequestType = phost->Control.Init.RequestType;
+	phost->Control.setup.b.bRequest = phost->Control.Init.Request;
+	phost->Control.setup.b.wValue.w = phost->Control.Init.Value;
+	phost->Control.setup.b.wIndex.w = phost->Control.Init.Index;
+	phost->Control.setup.b.wLength.w = phost->Control.Init.Length;
+	// set up the packet
+	phost->Control.pipe_out->Init.DataType = PIPE_PID_SETUP;
+	phost->Control.pipe_out->Size = USBH_SETUP_PKT_SIZE;
+	phost->Control.pipe_out->Data = (uint8_t *)phost->Control.setup.d8;
+	// submit it
+	assert(USBH_PipeWait(phost,phost->Control.pipe_out)==USBH_OK);
+
+	if (phost->Control.setup.b.wLength.w != 0 ){ // status
+		if((phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK)== USB_D2H) { // CTRL_DATA_IN
+			phost->Control.state = CTRL_DATA_IN;
+			phost->Control.pipe_in->Size = phost->Control.length;
+			phost->Control.pipe_in->Data = phost->Control.data;
+			phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+			assert(USBH_PipeWait(phost,phost->Control.pipe_in)==USBH_OK);
+		}else { // CTRL_DATA_OUT
+			phost->Control.state = CTRL_DATA_OUT;
+			phost->Control.pipe_out->Size = phost->Control.length;
+			phost->Control.pipe_out->Data = phost->Control.data;
+			phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
+			assert(USBH_PipeWait(phost,phost->Control.pipe_out)==USBH_OK);
+		}
+	}
+	if((phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK)== USB_D2H) { // CTRL_STATUS_OUT
+		phost->Control.state = CTRL_STATUS_OUT;
 		phost->Control.pipe_out->Size = 0;
 		phost->Control.pipe_out->Data = 0;
 		phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
-		USBH_ProcessPipe(phost,phost->Control.pipe_out);
-		phost->Control.state=  CTRL_COMPLETE;
+		assert(USBH_PipeWait(phost,phost->Control.pipe_out)==USBH_OK);
+	}else { // CTRL_STATUS_IN
+		phost->Control.state = CTRL_STATUS_IN;
+		phost->Control.pipe_in->Size = 0;
+		phost->Control.pipe_in->Data = 0;
+		phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+		assert(USBH_PipeWait(phost,phost->Control.pipe_in)==USBH_OK);
+	}
+	phost->Control.state = CTRL_COMPLETE;
+
+
+PIPE_THREAD_END()
+
+PIPE_THREAD_BEGIN(Control_Setup)
+	phost->Control.timer = phost->Timer;
+	phost->Control.state = CTRL_SETUP;
+	phost->Control.pipe_in->Init.EpType  = PIPE_EP_CONTROL;
+	phost->Control.pipe_out->Init.EpType  = PIPE_EP_CONTROL; // and the types
+	// set up the request
+	phost->Control.setup.b.bmRequestType = phost->Control.Init.RequestType;
+	phost->Control.setup.b.bRequest = phost->Control.Init.Request;
+	phost->Control.setup.b.wValue.w = phost->Control.Init.Value;
+	phost->Control.setup.b.wIndex.w = phost->Control.Init.Index;
+	phost->Control.setup.b.wLength.w = phost->Control.Init.Length;
+	// set up the packet
+	phost->Control.pipe_out->Init.DataType = PIPE_PID_SETUP;
+	phost->Control.pipe_out->Size = USBH_SETUP_PKT_SIZE;
+	phost->Control.pipe_out->Data = (uint8_t *)phost->Control.setup.d8;
+	// submit it
+	USBH_PipeStartup(phost,phost->Control.pipe_out);
+	PIPE_WAIT_UTILL_IDLE(phost->Control.pipe_out);
+
+	if (phost->Control.setup.b.wLength.w != 0 ){ // status
+		if((phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK)== USB_D2H) { // CTRL_DATA_IN
+			phost->Control.state = CTRL_DATA_IN;
+			phost->Control.pipe_in->Size = phost->Control.length;
+			phost->Control.pipe_in->Data = phost->Control.data;
+			phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+			PIPE_WAIT_UTILL_IDLE(phost->Control.pipe_in);
+		}else { // CTRL_DATA_OUT
+			phost->Control.state = CTRL_DATA_OUT;
+			phost->Control.pipe_out->Size = phost->Control.length;
+			phost->Control.pipe_out->Data = phost->Control.data;
+			phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
+			PIPE_WAIT_UTILL_IDLE(phost->Control.pipe_out);
+		}
+	}
+	if((phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK)== USB_D2H) { // CTRL_STATUS_OUT
+		phost->Control.state = CTRL_STATUS_OUT;
+		phost->Control.pipe_out->Size = 0;
+		phost->Control.pipe_out->Data = 0;
+		phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
+		PIPE_WAIT_UTILL_IDLE(phost->Control.pipe_out);
+	}else { // CTRL_STATUS_IN
+		phost->Control.state = CTRL_STATUS_IN;
+		phost->Control.pipe_in->Size = 0;
+		phost->Control.pipe_in->Data = 0;
+		phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+		PIPE_WAIT_UTILL_IDLE(phost->Control.pipe_in);
+	}
+	phost->Control.state = CTRL_COMPLETE;
+PIPE_THREAD_END()
+
+USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
+{
+	if(phost->Control.state == CTRL_IDLE) LC_INIT(CONTROL_LC);
+	if(PIPE_SCHEDULE(PIPE_THREAD_NAME(Control_Setup_Blocking)(phost))) return USBH_BUSY;
+	return phost->Control.state == CTRL_COMPLETE ?  USBH_OK : USBH_FAIL;
+}
+
+USBH_StatusTypeDef USBH_CtlReq2(USBH_HandleTypeDef *phost)
+{
+	if(phost->Control.state == CTRL_IDLE) LC_INIT(CONTROL_LC);
+	if(PIPE_SCHEDULE(PIPE_THREAD_NAME(Control_Setup)(phost))) return USBH_BUSY;
+	return phost->Control.state == CTRL_COMPLETE ?  USBH_OK : USBH_FAIL;
+}
+void Ctl_DataIn(USBH_HandleTypeDef *phost){
+	phost->Control.timer = phost->Timer;
+	phost->Control.pipe_in->Size = phost->Control.length;
+	phost->Control.pipe_in->Data = phost->Control.data;
+	phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+	phost->Control.state= CTRL_STATUS_OUT;
+}
+void Ctl_DataOut(USBH_HandleTypeDef *phost){
+	phost->Control.timer = phost->Timer;
+	phost->Control.pipe_out->Size = phost->Control.length;
+	phost->Control.pipe_out->Data = phost->Control.data;
+	phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
+	phost->Control.state= CTRL_STATUS_IN;
+}
+void Ctl_StatusIn(USBH_HandleTypeDef *phost){
+	phost->Control.timer = phost->Timer;
+	phost->Control.pipe_in->Size = 0;
+	phost->Control.pipe_in->Data = 0;
+	phost->Control.pipe_in->Init.DataType = PIPE_PID_DATA;
+	phost->Control.state=  CTRL_COMPLETE;
+}
+void Ctl_StatusOut(USBH_HandleTypeDef *phost){
+	phost->Control.timer = phost->Timer;
+	phost->Control.pipe_out->Size = 0;
+	phost->Control.pipe_out->Data = 0;
+	phost->Control.pipe_out->Init.DataType = PIPE_PID_DATA;
+	phost->Control.state=  CTRL_COMPLETE;
+}
+USBH_StatusTypeDef USBH_CtlReq_Blocking(USBH_HandleTypeDef *phost){
+	return USBH_BUSY;
+}
+USBH_StatusTypeDef USBH_CtlReq_old(USBH_HandleTypeDef *phost)
+{
+	if(phost->port_state != HOST_PORT_IDLE) return USBH_BUSY;
+	if(USBH_PipeStartup(phost,phost->Control.pipe_out) == USBH_BUSY) return USBH_BUSY;
+	if(USBH_PipeStartup(phost,phost->Control.pipe_in) == USBH_BUSY) return USBH_BUSY;
+	assert(USBH_PipeStartup(phost,phost->Control.pipe_in) == USBH_FAIL);
+	assert(USBH_PipeStartup(phost,phost->Control.pipe_out) == USBH_FAIL);
+	USBH_StatusTypeDef status=USBH_BUSY;
+	switch(phost->Control.state) {
+	case CTRL_SETUP:
+		CtlSetup(phost);
+		USBH_PipeStartup(phost,phost->Control.pipe_out);
+		break;
+	case CTRL_DATA_IN:
+		Ctl_DataIn(phost);
+		USBH_PipeStartup(phost,phost->Control.pipe_in);
+		break;
+	case CTRL_DATA_OUT:
+		Ctl_DataOut(phost);
+		USBH_PipeStartup(phost,phost->Control.pipe_out);
+		break;
+	case CTRL_STATUS_IN:
+		Ctl_StatusIn(phost);
+		USBH_PipeStartup(phost,phost->Control.pipe_in);
+		break;
+	case CTRL_STATUS_OUT:
+		Ctl_StatusOut(phost);
+		USBH_PipeStartup(phost,phost->Control.pipe_out);
 		break;
 	case CTRL_COMPLETE:
 		phost->Control.state = CTRL_SETUP;
@@ -407,6 +552,7 @@ USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
 		//CTRL_DATA_IN
 		if(phost->Control.prev_state == CTRL_DATA_IN) { // stall at data in so its bad request we sent
 			status =  USBH_FAIL;
+			phost->Control.state = CTRL_SETUP; // restart the mess?
 		}
 		if (++ phost->Control.errorcount > USBH_MAX_ERROR_COUNT){
 			USBH_ErrLog("Hard Stall");
@@ -414,7 +560,7 @@ USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
 		} else {
 			print_buffer(phost->Control.data,phost->Control.length > 10 ? 10 : phost->Control.length);
 		}
-		phost->Control.state = CTRL_SETUP; // restart the mess?
+
 		break;
 	default:
 	case CTRL_ERROR:
@@ -430,6 +576,7 @@ USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
 		{
 		  /* try to recover control */
 			USBH_LL_Stop(phost);
+			phost->Control.state = CTRL_SETUP; // restart the mess?
 		  /* Do the transmission again, starting from SETUP Packet */
 		}
 		else
@@ -439,7 +586,7 @@ USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost)
 			USBH_ErrLog("Control error");
 			status= USBH_FAIL;
 		}
-		phost->Control.state = CTRL_SETUP; // restart the mess?
+
 		break;
 	}
 	return status;

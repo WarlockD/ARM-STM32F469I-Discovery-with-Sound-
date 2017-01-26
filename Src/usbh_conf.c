@@ -201,13 +201,13 @@ void HAL_HCD_Disconnect_Callback(HCD_HandleTypeDef *hhcd)
   */
 void HAL_HCD_HC_NotifyURBChange_Callback(HCD_HandleTypeDef *hhcd, uint8_t chnum, HCD_URBStateTypeDef urb_state)
 {
-
 	USBH_HandleTypeDef* phost = (USBH_HandleTypeDef*)hhcd->pData;
 	USBH_PipeHandleTypeDef* pipe = &phost->Pipes[chnum];
 	pipe->urb_state = (USBH_URBStateTypeDef)urb_state;
-	pipe->state=PIPE_COMPLETE;
-	phost->port_state = HOST_PORT_IDLE;
+
 	if(pipe->Callback) pipe->Callback(phost,pipe);
+	pipe->state=PIPE_IDLE;
+	phost->port_state = HOST_PORT_IDLE;
   /* To be used with OS to sync URB state with the global state machine */
 }
 

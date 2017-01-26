@@ -88,11 +88,9 @@ USBH_StatusTypeDef USBH_ClosePipe  (USBH_HandleTypeDef *phost,USBH_PipeHandleTyp
 USBH_PipeHandleTypeDef* USBH_AllocPipe  (USBH_HandleTypeDef *phost,void** owner);
 void USBH_FreePipe(USBH_HandleTypeDef *phost, USBH_PipeHandleTypeDef* handle);
 
-USBH_StatusTypeDef USBH_ProcessPipe (USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle);
-
-
-
-
+USBH_StatusTypeDef USBH_PipeStartup(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle);
+USBH_StatusTypeDef USBH_PipeStatus(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle);
+USBH_StatusTypeDef USBH_PipeWait(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle);
 
 
 /**

@@ -451,7 +451,9 @@ static Bits Operator__TemplateVolume(Operator *self, OperatorState yes) {
 		if ( self->reg20 & MASK_SUSTAIN ) {
 			return vol;
 		}
+
 		//In sustain phase, but not sustaining, do regular release
+		// no break
 	case RELEASE: 
 		vol += Operator__RateForward( self, self->releaseAdd );;
 		if ( GCC_UNLIKELY(vol >= ENV_MAX) ) {
@@ -1252,6 +1254,7 @@ void Chip__WriteReg(Chip *self, Bit32u reg, Bit8u val ) {
 		break;
 	case 0xc0 >> 4:
 		REGCHAN( WriteC0 );
+	// no break
 	case 0xd0 >> 4:
 		break;
 	case 0xe0 >> 4:

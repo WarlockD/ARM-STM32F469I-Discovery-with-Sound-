@@ -189,14 +189,8 @@ void SystemTimerConfig() {
 	/* Enable the TIMx global Interrupt */
 	HAL_NVIC_EnableIRQ(TIMx_IRQn);
 	//HAL_SetTicks(0); // should sync this better
-	signal(SIGALRM, test_signal);
-	printf("Set!");
-	struct itimerval timer = { { 1,0}, {0,0} };
-	timer.it_interval.tv_sec = 1;
-	gettimeofday(&timer.it_value,NULL);
-	print_time("Start: ", &timer.it_value);
-	setitimer(ITIMER_REAL,&timer,NULL);
 
+#if 0
 	while(1){
 		if(sssf) {
 			sssf= 0;
@@ -207,4 +201,5 @@ void SystemTimerConfig() {
 		}
 	//	printf("Next");
 	}
+#endif
 }

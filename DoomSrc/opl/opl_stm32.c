@@ -434,7 +434,7 @@ static void WriteRegister(unsigned int reg_num, unsigned int value)
 
         case OPL_REG_NEW:
             opl_opl3mode = value & 0x01;
-
+            // no break
         default:
             OPL3_WriteRegBuffered(&opl_chip, reg_num, value);
             break;

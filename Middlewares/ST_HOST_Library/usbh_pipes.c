@@ -46,7 +46,11 @@
 USBH_StatusTypeDef USBH_OpenPipe  (USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle)
 {
 	// fifo_init_static(&handle->fifo,handle->Data, USBH_MAX_DATA_BUFFER);
-	assert(handle && handle->state == PIPE_IDLE);
+	assert(handle);
+	if(handle->state != PIPE_IDLE){
+		printf("Something is weird %i\r\n", handle->state);
+		assert(handle->state == PIPE_IDLE);
+	}
   USBH_LL_OpenPipe(phost,
 		  handle->Pipe,
 		  handle->Init.EpNumber,
@@ -85,7 +89,8 @@ USBH_PipeHandleTypeDef* USBH_AllocPipe  (USBH_HandleTypeDef *phost, void** owner
 	USBH_PipeHandleTypeDef* pipe = NULL;
 	for (uint8_t idx = 0 ; idx < 11 ; idx++)
 		  if(phost->Pipes[idx].state == PIPE_NOTALLOCATED) {
-			  USBH_PipeHandleTypeDef* pipe = &phost->Pipes[idx];
+			  pipe = &phost->Pipes[idx];
+			  pipe->state = PIPE_IDLE;
 			  pipe->Pipe = idx;
 			  if(pipe->Init.Direction)
 			  if(owner) {
@@ -116,36 +121,57 @@ void USBH_FreePipe  (USBH_HandleTypeDef *phost, USBH_PipeHandleTypeDef* handle)
 		// all you have to do
 	}
 }
+static void SubmitPipe(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle) {
+	handle->state = PIPE_WORKING;
+	handle->urb_state = USBH_LL_GetURBState(phost,handle->Pipe);
+	uint8_t do_ping = (handle->Init.Speed == USBH_SPEED_HIGH && handle->Init.Direction == PIPE_DIR_OUT)  ? 1 : 0;
+	USBH_LL_SubmitURB (phost,
+		handle->Pipe,             // Pipe index
+		handle->Init.Direction,     // Direction : OUT
+		handle->Init.EpType,		// EP type
+		handle->Init.DataType,
+		handle->Data,
+		handle->Size,
+		do_ping); /* do ping (HS Only)*/
+}
 
-USBH_StatusTypeDef USBH_ProcessPipe(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle){
+
+USBH_StatusTypeDef USBH_PipeStartup(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle){
 	assert(handle->state != PIPE_NOTALLOCATED);
 	if(phost->port_state == HOST_PORT_ACTIVE) return USBH_BUSY;
 	if(phost->port_state != HOST_PORT_IDLE) return USBH_FAIL;// fail on bad state
 	switch(handle->state){
-	case PIPE_COMPLETE:
-			phost->port_state = HOST_PORT_IDLE;
-			return handle->urb_state == USBH_URB_DONE ? USBH_OK : USBH_FAIL;
-	case PIPE_IDLE:
-		phost->port_state = HOST_PORT_ACTIVE;
-		// if we are not an intruppt and sending data, do a ping
-		handle->urb_state = USBH_URB_IDLE;
-		handle->state = PIPE_WORKING;
-		uint8_t do_ping = (handle->Init.Speed == USBH_SPEED_HIGH && handle->Init.Direction == PIPE_DIR_OUT)  ? 1 : 0;
-		USBH_LL_SubmitURB (phost,
-			handle->Pipe,             // Pipe index
-			handle->Init.Direction,     // Direction : OUT
-			handle->Init.EpType,		// EP type
-			handle->Init.DataType,
-			handle->Data,
-			handle->Size,
-			do_ping); /* do ping (HS Only)*/
-		// no break
-	case PIPE_WORKING: return USBH_BUSY; break;
-	case PIPE_NOTALLOCATED:
-			assert(handle->state != PIPE_NOTALLOCATED);
-			// no break
-	default: return USBH_FAIL;
+  case PIPE_IDLE:
+	  SubmitPipe(phost,handle);
+		return USBH_OK;
+  default:
+	  return USBH_FAIL;
 	}
+}
+
+USBH_StatusTypeDef USBH_PipeStatus(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle){
+	assert(handle->state != PIPE_NOTALLOCATED);
+	if(phost->port_state == HOST_PORT_ACTIVE) return USBH_BUSY;
+	if(phost->port_state != HOST_PORT_IDLE) return USBH_FAIL;// fail on bad state
+	switch(handle->state){
+	case PIPE_IDLE:
+		return handle->urb_state == USBH_URB_DONE ? USBH_OK : USBH_FAIL;
+	case PIPE_WORKING: return USBH_BUSY; break;
+	default:
+		return USBH_FAIL;
+	}
+}
+
+USBH_StatusTypeDef USBH_PipeWait(USBH_HandleTypeDef *phost,USBH_PipeHandleTypeDef* handle) {
+	assert(handle->state != PIPE_NOTALLOCATED);
+	if(phost->port_state == PIPE_IDLE)  SubmitPipe(phost,handle);
+	while(handle->state ==PIPE_WORKING);
+	handle->urb_state = USBH_LL_GetURBState(phost,handle->Pipe);
+	if(handle->urb_state == USBH_URB_DONE || handle->urb_state == USBH_URB_IDLE) {
+		return USBH_OK;
+	}
+	USBH_ErrLog("USBH_PipeWait Error: %s", URBStateToString(handle->urb_state));
+	return USBH_FAIL;
 }
 /**
   * @brief  USBH_GetFreePipe

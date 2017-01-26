@@ -330,6 +330,7 @@ typedef enum
   CTRL_ERROR,
   CTRL_STALLED,
   CTRL_COMPLETE,
+  CTRL_IDLE,
   CTRL_MAX_STATES
 }CTRL_StateTypeDef;
 const char* CTRLStateToString(CTRL_StateTypeDef t);
@@ -398,7 +399,7 @@ USBH_OSEventTypeDef;
 struct _USBH_HandleTypeDef;
 typedef	USBH_StatusTypeDef (* USBH_CallbackTypeDef )(struct _USBH_HandleTypeDef *pHandle);
 
-typedef void (*USBH_URBChangeCallback)(struct _USBH_HandleTypeDef *pHandle, uint8_t chnum, USBH_URBStateTypeDef urb_state);
+typedef void (*USBH_URBChangeCallback)(struct _USBH_HandleTypeDef *phost, uint8_t chnum, USBH_URBStateTypeDef urb_state);
 
 
 
@@ -424,15 +425,119 @@ typedef struct _StateInfo {
 	struct _StateInfo* Next;
 	// humm, we need to keep a state of whats going on and what packet we are on
 } USBH_StateInfoTypeDef;
+struct _ThreadInfo ;
+typedef char (*PTThread)(struct _ThreadInfo* pt,struct _USBH_HandleTypeDef* phost);
+
+// we use the gcc system for labels as values, not very compatable
+// but I want this all in cpp anyway so fuck it
+//#define USE_GCC_LABLELS
+
+#define LC_CONCAT2(s1, s2) s1##s2
+#define LC_CONCAT(s1, s2) LC_CONCAT2(s1, s2)
+#ifndef USE_GCC_LABELS
+typedef unsigned short lc_t;
+#define LC_INIT(s) s = 0;
+#define LC_RESUME(s) switch(s) { case 0:
+#define LC_SET(s) s = __LINE__; case __LINE__:
+#define LC_SET2MORE (__LINE__+1000)
+#define LC_SET2(s) s = LC_SET2MORE; case LC_SET2MORE:
+#define LC_END(s) }
+#else
+typedef void * lc_t;
+#define LC_INIT(s) s = NULL;
+#define LC_RESUME(s) do {	if(s != NULL) goto *s;	  } while(0);
+
+#define LC_END(s)
+#define LC_SET(s)				\
+  do {						\
+    LC_CONCAT(LC_LABEL, __LINE__):   	        \
+    (s) = &&LC_CONCAT(LC_LABEL, __LINE__);	\
+  } while(0)
+#define LC_SET2(s)				\
+  do {						\
+    LC_CONCAT(LC_2LABEL, __LINE__):   	        \
+    (s) = &&LC_CONCAT(LC_LABEL, __LINE__);	\
+  } while(0)
+#endif
+
+typedef struct _ThreadInfo {
+	lc_t lc;
+	USBH_StatusTypeDef status;
+	struct __DeviceType* Device;
+	int Value;
+	void* Data;
+	PTThread func;
+} USBH_ThreadTypeDef;
+
+#define USB_WAITING 0
+#define USB_YIELDED 1
+#define USB_EXITED  2
+#define USB_ENDED   3
 
 
+#define USBH_SCHEDULE(f) ((f) < USB_EXITED)
+
+#define USBH_THREAD_NAME(NAME) NAME##_USBThread
+#define USBH_THREAD_BEGIN(NAME) \
+	char USBH_THREAD_NAME(NAME)(USBH_HandleTypeDef*phost, struct _ThreadInfo* pt) { \
+		const char* THREAD_NAME = #NAME; (void)THREAD_NAME;\
+		struct __DeviceType* dev = pt->Device; (void)dev;\
+		LC_RESUME(pt->lc);
+
+#define USBH_USING_VALUE(NAME) int NAME=pt->Value;
+#define USBH_USING_DATA(NAME, TYPE)  TYPE NAME = (TYPE)pt->Data;
+
+
+#define USBH_RUN_PHOST(PHOST,START_THREAD) do { USBH_THREAD_NAME(START_THREAD)((PHOST), &(PHOST)->PTThreads[0]); } while(0);
+
+#define USBH_THREAD_INIT(STATE) do {\
+		LC_INIT((STATE)->lc);\
+		(STATE)->status=USBH_OK; \
+	} while(0);
+
+#define USBH_THREAD_END() \
+		LC_END((pt)->lc); \
+		USBH_THREAD_INIT(pt); \
+		return USB_ENDED; \
+		CTR_ERROR:; \
+		USBH_DbgLog("CTR_ERROR error in '%s' status=%i",THREAD_NAME,phost->Control.state); \
+		while(1); \
+		return USB_ENDED; \
+  }
+#define USBH_THREAD_STATUS (pt->status)
+
+#define USBH_EXIT() do{ USBH_THREAD_INIT(pt); return USB_EXITED;  } while(0)
+#define USBH_WAIT_UNTILL(condition) \
+	 do {						\
+		 LC_SET(pt->lc); \
+		if(!(condition))return USB_WAITING;\
+	  } while(0);
+#define USBH_WAIT_WHILE(cond)  USBH_WAIT_UNTILL(!(cond))
+#define USBH_WAIT_CTRL_REQUEST() \
+		pt->status=USBH_CtlReq(phost);\
+		USBH_WAIT_WHILE(pt->status == USBH_BUSY); \
+		if(pt->status != USBH_OK) goto CTR_ERROR;
+
+
+
+#define USBH_SPAWN(thread, DATA, VALUE)		\
+  do {						\
+	  USBH_DbgLog("SPAWNING THREAD: %s", #thread); \
+	  phost->PTThreadPos++; \
+	  USBH_THREAD_INIT(&phost->PTThreads[phost->PTThreadPos]); \
+	  phost->PTThreads[phost->PTThreadPos].Data = DATA;       \
+	  phost->PTThreads[phost->PTThreadPos].Value = VALUE;     \
+	  LC_SET(pt->lc); \
+	  if(USBH_THREAD_NAME(thread)(phost,&phost->PTThreads[phost->PTThreadPos])< USB_EXITED) \
+	  	  return USB_WAITING; \
+	  LC_SET2(pt->lc); \
+  } while(0)
 
 typedef enum
 {
 	PIPE_NOTALLOCATED = 0,
 	PIPE_IDLE,
 	PIPE_WORKING,
-	PIPE_COMPLETE,	// only set from the interrupt
 } USBH_PipeStateTypeDef;
 
 typedef enum {
@@ -469,6 +574,7 @@ typedef struct _PipeInit {
 
 typedef struct _PipeHandle {
 	USBH_PipeInitTypeDef Init;
+	lc_t pt;
 	void (*Callback)(struct _USBH_HandleTypeDef *phost,struct _PipeHandle* pipe);
 	uint8_t Pipe; 	// set on init
 	uint8_t* Data;  // data from or to pipe. must be big enough for the packet size
@@ -494,6 +600,7 @@ typedef struct
 	__IO CTRL_StateTypeDef     	state;
 	CTRL_StateTypeDef     		prev_state;
 	uint8_t               		errorcount;
+	lc_t lc;
 } USBH_CtrlTypeDef;
 
 
@@ -526,6 +633,7 @@ typedef struct __DeviceType
 	uint8_t                           current_interface;
 	uint8_t							  interface_count;
 	USBH_ClassTypeDef*				  ActiveClass[1]; // array of interfaces
+	int16_t 						  StringLangSupport[3];
 	void* pData;					  // user data
 	struct __DeviceType* Next;
 }USBH_DeviceTypeDef;
@@ -562,13 +670,15 @@ typedef struct _USBH_HandleTypeDef
 	// This is the buffer used for all packet data if a buffer
 	// is not supplyed, it can be used for anything
   uint8_t                   PacketData[USBH_MAX_DATA_BUFFER];
+  USBH_ThreadTypeDef		PTThreads[MAX_STATE_STACK];
+  uint16_t					PTThreadPos;
   USBH_StateInfoTypeDef		StateStack[MAX_STATE_STACK];
   __IO PORT_StateTypeDef    port_state; // raw port state, turn on the power etc
   USBH_SpeedTypeDef			port_speed;	// current port speed
   uint8_t					StackPos;
   USBH_HostStatusTypeDef	HostStatus;
 
-  int16_t 					StringLangSupport[3];
+
   USBH_CtrlTypeDef      	Control;
   uint8_t					DeviceCount;
   USBH_DeviceTypeDef    	Devices[127];
