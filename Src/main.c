@@ -245,7 +245,7 @@ int main(void)
     BSP_LCD_Clear(LCD_COLOR_BLACK);
     BSP_TS_Init(800,480);
     SetupUSB();
-    testusb() ;
+   testusb() ;
     printf("Then printf is setup\r\n");
    // test_usb_loop();
     // ok lets do audio!

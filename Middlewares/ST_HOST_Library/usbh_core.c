@@ -28,6 +28,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "usbh_core.h"
+#include "stm32469i_discovery.h"
 #include <assert.h>
 
 /** @addtogroup USBH_LIB
@@ -184,6 +185,8 @@ USBH_StatusTypeDef  DeInitStateMachine(USBH_HandleTypeDef *phost)
   return USBH_OK;
 }
 
+
+/* To be used with OS to sync URB state with the global state machine */
 /**
   * @brief  USBH_RegisterClass 
   *         Link class driver to Host Core.

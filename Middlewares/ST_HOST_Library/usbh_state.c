@@ -144,25 +144,24 @@ static void ParseCfgDesc(USBH_HandleTypeDef* phost, USBH_DeviceTypeDef* dev, USB
 
 
 void InitControlPipes(USBH_HandleTypeDef* phost) {
+	if(!phost->Control.pipe_out) {
+		phost->Control.pipe_out=USBH_AllocPipe(phost,&phost->Control.pipe_out);
+		phost->Control.pipe_out->Init.EpNumber   = 0x00;
+		phost->Control.pipe_out->Init.Address  	 = 0;
+		phost->Control.pipe_out->Init.Type  = PIPE_CONTROL_OUT;
+		phost->Control.pipe_out->Init.PacketSize = USBH_SETUP_PKT_SIZE;
+		phost->Control.pipe_out->Init.Speed 	 = phost->port_speed;
+	}
 	// set up the control pipes
-	if(!phost->Control.pipe_in) phost->Control.pipe_in=USBH_AllocPipe(phost,&phost->Control.pipe_in);
-	if(!phost->Control.pipe_out) phost->Control.pipe_out=USBH_AllocPipe(phost,&phost->Control.pipe_out);
+	if(!phost->Control.pipe_in) {
+		phost->Control.pipe_in=USBH_AllocPipe(phost,&phost->Control.pipe_in);
+		phost->Control.pipe_in->Init.EpNumber   = 0x80;
+		phost->Control.pipe_in->Init.Address  	 = 0;
+		phost->Control.pipe_in->Init.Type 	 = PIPE_CONTROL_IN;
+		phost->Control.pipe_in->Init.PacketSize  = USBH_SETUP_PKT_SIZE;
+		phost->Control.pipe_in->Init.Speed 		 = phost->port_speed;
 
-	phost->Control.pipe_in->Init.EpNumber   = 0;
-	phost->Control.pipe_in->Init.Address  	 = 0x80;
-	phost->Control.pipe_in->Init.Direction 	 = PIPE_DIR_IN;
-	phost->Control.pipe_in->Init.DataType 	 = PIPE_PID_SETUP;
-	phost->Control.pipe_in->Init.EpType 	 = PIPE_EP_CONTROL;
-	phost->Control.pipe_in->Init.PacketSize  = USBH_SETUP_PKT_SIZE;
-	phost->Control.pipe_in->Init.Speed 		 = phost->port_speed;
-
-	phost->Control.pipe_out->Init.EpNumber   = 0;
-	phost->Control.pipe_out->Init.Address  	 = 0x00;
-	phost->Control.pipe_out->Init.Direction  = PIPE_DIR_OUT;
-	phost->Control.pipe_out->Init.DataType 	 = PIPE_PID_SETUP;
-	phost->Control.pipe_out->Init.EpType 	 = PIPE_EP_CONTROL;
-	phost->Control.pipe_out->Init.PacketSize = USBH_SETUP_PKT_SIZE;
-	phost->Control.pipe_out->Init.Speed 	 = phost->port_speed;
+	}
 
 	/* Open Control pipes */
 	USBH_OpenPipe (phost,phost->Control.pipe_in);

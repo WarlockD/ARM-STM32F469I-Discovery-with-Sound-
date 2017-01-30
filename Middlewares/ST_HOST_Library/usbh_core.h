@@ -143,6 +143,7 @@ USBH_StatusTypeDef   USBH_LL_SetToggle    (USBH_HandleTypeDef *phost, uint8_t , 
 uint8_t              USBH_LL_GetToggle    (USBH_HandleTypeDef *phost, uint8_t );
 
 USBH_StateInfoTypeDef* USBH_CurrentState(USBH_HandleTypeDef *phost);
+void USBH_LL_NotifyURBChange_Callback(USBH_HandleTypeDef*phost , uint8_t pipe ,  USBH_URBStateTypeDef state);
 
 
 

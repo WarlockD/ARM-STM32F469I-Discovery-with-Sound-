@@ -93,7 +93,8 @@ extern uint8_t USBH_CfgDesc[512];
 /** @defgroup USBH_CTLREQ_Exported_FunctionsPrototype
   * @{
   */
-USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost);
+USBH_StatusTypeDef USBH_CtlReq(USBH_HandleTypeDef *phost, uint8_t* data, uint16_t length);
+
 
 
 

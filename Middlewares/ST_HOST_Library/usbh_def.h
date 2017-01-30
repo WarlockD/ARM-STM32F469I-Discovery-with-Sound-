@@ -94,6 +94,8 @@
 #define  LE32S(addr)              (int32_t)(LE32((addr)))
 
 
+#define ENUM_TO_STRING_DEFINE(TYPE) const char* TYPE##_ToString(TYPE t)
+#define ENUM_TO_STRING(TYPE,VALUE) TYPE##_ToString(VALUE)
 
 #define  USB_LEN_DESC_HDR                               0x02
 #define  USB_LEN_DEV_DESC                               0x12
@@ -294,6 +296,7 @@ typedef enum {
 	HOST_PORT_IDLE,		// no data going in or out
 	HOST_PORT_ACTIVE,	// waiting for packet or finish trasmit
 } PORT_StateTypeDef;
+ENUM_TO_STRING_DEFINE(PORT_StateTypeDef);
 
 typedef enum
 {
@@ -318,6 +321,7 @@ typedef enum
 	HOST_STACK_GET_FULL_CFG_DESC,
 	USBH_MAX_STATES
 }HOST_StateTypeDef;
+ENUM_TO_STRING_DEFINE(HOST_StateTypeDef);
 const char* HOST_StateTypeToString(HOST_StateTypeDef t);
 
 typedef enum
@@ -333,6 +337,7 @@ typedef enum
   CTRL_IDLE,
   CTRL_MAX_STATES
 }CTRL_StateTypeDef;
+ENUM_TO_STRING_DEFINE(CTRL_StateTypeDef);
 const char* CTRLStateToString(CTRL_StateTypeDef t);
 
 
@@ -351,9 +356,10 @@ typedef enum {
 	USBH_URB_NYET,
 	USBH_URB_ERROR,
 	USBH_URB_STALL,
+	USBH_URB_NON_ALLOCATED,
 	USBH_STATE_MAX
 }USBH_URBStateTypeDef;
-
+ENUM_TO_STRING_DEFINE(USBH_URBStateTypeDef);
 const char* URBStateToString(USBH_URBStateTypeDef t);
 
 struct _USBH_HandleTypeDef;
@@ -383,8 +389,7 @@ typedef enum
   USBH_SPEED_LOW   = 2,  
     
 }USBH_SpeedTypeDef;
-
-
+ENUM_TO_STRING_DEFINE(USBH_SpeedTypeDef);
 
 typedef enum
 {
@@ -514,7 +519,7 @@ typedef struct _ThreadInfo {
 	  } while(0);
 #define USBH_WAIT_WHILE(cond)  USBH_WAIT_UNTILL(!(cond))
 #define USBH_WAIT_CTRL_REQUEST() \
-		pt->status=USBH_CtlReq(phost);\
+		pt->status=USBH_CtlReq(phost, phost->Control.data,phost->Control.length);\
 		USBH_WAIT_WHILE(pt->status == USBH_BUSY); \
 		if(pt->status != USBH_OK) goto CTR_ERROR;
 
@@ -533,57 +538,48 @@ typedef struct _ThreadInfo {
 	  LC_SET2(pt->lc); \
   } while(0)
 
-typedef enum
-{
-	PIPE_NOTALLOCATED = 0,
-	PIPE_IDLE,
-	PIPE_WORKING,
-} USBH_PipeStateTypeDef;
+
 
 typedef enum {
-	PIPE_PID_SETUP=0,
-	PIPE_PID_DATA,
+	PIPE_SETUP=0,
+	PIPE_CONTROL_IN, // 0x???1 is in
+	PIPE_CONTROL_OUT,
+	PIPE_ISO_IN,
+	PIPE_ISO_OUT,
+	PIPE_BULK_IN,
+	PIPE_BULK_OUT,
+	PIPE_INTERRUPT_IN,
+	PIPE_INTERRUPT_OUT
 } USBH_PipeDataTypeDef;
-
-typedef enum {
-	PIPE_EP_CONTROL =0,
-	PIPE_EP_ISO ,
-	PIPE_EP_BULK ,
-	PIPE_EP_INTERRUPT ,
-} USBH_PipeEndpointTypeDef;
-
+ENUM_TO_STRING_DEFINE(USBH_PipeDataTypeDef);
 #define USBH_SETUP_PKT_SIZE                       8
 
-typedef enum
-{
-	PIPE_DIR_OUT,
-	PIPE_DIR_IN,
-} USBH_PipeDirectionTypeDef;
 
 typedef struct _PipeInit {
-	USBH_PipeDirectionTypeDef Direction; // set on init
 	USBH_SpeedTypeDef Speed;
-	USBH_PipeEndpointTypeDef EpType;
-	USBH_PipeDataTypeDef DataType;
+	USBH_PipeDataTypeDef Type;
 	uint8_t Address;
 	uint8_t PacketSize;
 	uint8_t EpNumber;
 } USBH_PipeInitTypeDef;
 
 
+typedef enum {
+	PIPE_NOTALLOCATED=0,
+	PIPE_IDLE,
+	PIPE_WORKING,
+} USBH_PipeStatusTypDef;
 
 typedef struct _PipeHandle {
 	USBH_PipeInitTypeDef Init;
-	lc_t pt;
+	__IO USBH_PipeStatusTypDef state;
+	__IO USBH_URBStateTypeDef urb_state;
 	void (*Callback)(struct _USBH_HandleTypeDef *phost,struct _PipeHandle* pipe);
-	uint8_t Pipe; 	// set on init
+	uint8_t Pipe; 	// pipe index
 	uint8_t* Data;  // data from or to pipe. must be big enough for the packet size
 	uint16_t Size;	// data size to be trasfered
-	__IO USBH_PipeStateTypeDef state;
-	__IO USBH_URBStateTypeDef urb_state;
 	void** owner; // device using pipe, null if not in use
 } USBH_PipeHandleTypeDef;
-
 
 
 
