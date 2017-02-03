@@ -27,27 +27,26 @@
 							<builder buildPath="${workspace_loc:/uart_test}/Debug" id="fr.ac6.managedbuild.builder.gnu.cross.2125834762" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" superClass="fr.ac6.managedbuild.builder.gnu.cross">
 								<outputEntries>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="Debug"/>
-									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name="Release"/>
 								</outputEntries>
 							</builder>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler">
-								<option defaultValue="gnu.c.optimization.level.none" id="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level.1854498428" name="Optimization Level" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="fr.ac6.managedbuild.gnu.c.optimization.level.size" valueType="enumerated"/>
+								<option defaultValue="gnu.c.optimization.level.none" id="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level.1854498428" name="Optimization Level" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="fr.ac6.managedbuild.gnu.c.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.1564471419" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1071076670" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="../Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
-									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FatFs/src/drivers"/>
-									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
-									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FatFs/src"/>
-									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Include"/>
-									<listOptionValue builtIn="false" value="../Discovery"/>
-									<listOptionValue builtIn="false" value="../Components/Common"/>
-									<listOptionValue builtIn="false" value="../Components/otm8009a"/>
-									<listOptionValue builtIn="false" value="../DoomSrc"/>
-									<listOptionValue builtIn="false" value="&quot;../DoomSrc\opl&quot;"/>
-									<listOptionValue builtIn="false" value="../DoomSrc/chcodoom"/>
-									<listOptionValue builtIn="false" value="../Middlewares/ST_HOST_Library"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src/drivers"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Discovery"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/Common"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/otm8009a"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/chcodoom"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Debug"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1134411373" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
@@ -56,6 +55,10 @@
 									<listOptionValue builtIn="false" value="STM32F469xx"/>
 								</option>
 								<option id="fr.ac6.managedbuild.gnu.c.compiler.option.misc.other.3792462" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-fmessage-length=0" valueType="string"/>
+								<option id="gnu.c.compiler.option.dialect.std.1484984826" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c11" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.warnings.extrawarn.137789696" name="Extra warnings (-Wextra)" superClass="gnu.c.compiler.option.warnings.extrawarn" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="gnu.c.compiler.option.warnings.wconversion.121404899" name="Implicit conversion warnings (-Wconversion)" superClass="gnu.c.compiler.option.warnings.wconversion" useByScannerDiscovery="false" value="false" valueType="boolean"/>
+								<option id="fr.ac6.managedbuid.gnu.c.compiler.option.misc.other.1654800912" name="Other flags" superClass="fr.ac6.managedbuid.gnu.c.compiler.option.misc.other" useByScannerDiscovery="false" value="-fmessage-length=0 -Wenum-compare" valueType="string"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.2026854550" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s.1334478591" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s"/>
 							</tool>
@@ -63,17 +66,21 @@
 								<option id="gnu.cpp.compiler.option.optimization.level.926200119" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.level.643557258" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.251589608" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="../Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
-									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FatFs/src/drivers"/>
-									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
-									<listOptionValue builtIn="false" value="../Middlewares/Third_Party/FatFs/src"/>
-									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Include"/>
-									<listOptionValue builtIn="false" value="../Discovery"/>
-									<listOptionValue builtIn="false" value="../Components/Common"/>
-									<listOptionValue builtIn="false" value="../Components/otm8009a"/>
-									<listOptionValue builtIn="false" value="../DoomSrc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src/drivers"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Discovery"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/Common"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/otm8009a"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/chcodoom"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/ST_HOST_Library"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Debug"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.396695523" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
@@ -81,6 +88,8 @@
 									<listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>
 									<listOptionValue builtIn="false" value="STM32F469xx"/>
 								</option>
+								<option id="gnu.cpp.compiler.option.dialect.std.1261352705" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.dialect.flags.983693530" name="Other dialect flags" superClass="gnu.cpp.compiler.option.dialect.flags" useByScannerDiscovery="true" value="-std=gnu++11" valueType="string"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp.750921751" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s.922596738" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s"/>
 							</tool>
@@ -105,21 +114,39 @@
 							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.777811759" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.1715161228" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler">
 								<option id="gnu.both.asm.option.include.paths.1504148051" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value=""/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src/drivers"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Discovery"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/Common"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/otm8009a"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/chcodoom"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/ST_HOST_Library"/>
+									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Debug"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.913080285" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.assembler.input.1360862337" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.input"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.262463889.964677593" name="example-small.c" rcbsApplicability="disable" resourcePath="pt/example-small.c" toolsToInvoke="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076.754230296">
+						<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076.754230296" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076"/>
+					</fileInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Components"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Discovery"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="DoomSrc"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Inc"/>
-						<entry excluding="ST_HOST_Library/usbh_hid_mouse.c|ST_HOST_Library/usbh_hid_keybd.c|ST_HOST_Library/usbh_hid.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry excluding="ST_HOST_Library|ST_HOST_Library/usbh_hid_mouse.c|ST_HOST_Library/usbh_hid_keybd.c|ST_HOST_Library/usbh_hid.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
+						<entry excluding="example-small.c|example-codelock.c|example-buffer.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="pt"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

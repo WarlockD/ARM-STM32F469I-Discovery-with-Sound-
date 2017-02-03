@@ -1613,7 +1613,6 @@ HAL_StatusTypeDef USB_HC_Halt(USB_OTG_GlobalTypeDef *USBx , uint8_t hc_num)
        USBx_HC(hc_num)->HCCHAR |= USB_OTG_HCCHAR_CHENA; 
     }
   }
-  printf("USB_HC_Halt(%i)\r\n",hc_num);
   return HAL_OK;
 }
 

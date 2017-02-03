@@ -190,6 +190,7 @@ void uart_puti(unsigned long value, int width, t_uart_mode mode) {
 	//char* buffer = uart_buffr +
 	//void uart_puti(unsigned long value, int width, t_uart_mode mode);
 }
+
 void uart_print(const char* fmt,...){
 	char buf[128];
 	va_list va;

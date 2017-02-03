@@ -62,12 +62,10 @@
 #include <string.h>
 #include <time.h>
 #include <stdlib.h>
-#include "usbh_core.h"
+#include "usb_host.h"
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
-#include "usbh_hid.h"
-#include "usbh_hid_joystick.h"
-#include "usbh_hid_parser.h"
+
 
 /* USER CODE END Includes */
 
@@ -90,7 +88,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN 0 */
 const char booting_up[] = "We are booting up!\r\n";
 void q_putstr(const char* str) {
-	HAL_UART_Transmit(&huart3, (uint8_t*)str,strlen(str),100);
+	HAL_UART_Transmit(&huart3, (uint8_t*)str,(uint16_t)strlen(str),100);
 }
 uint32_t* layer0_address = NULL;
 
@@ -105,94 +103,30 @@ void MountSD() {
 //void  D_DoomMain();
 void D_DoomMain (int argc, char** argv);
 
-USBH_HandleTypeDef hUSBHost;
+
 
 /* Private function prototypes -----------------------------------------------*/
 //static void SystemClock_Config(void);
 
 
 
-static bool usb_keyboard_connected = false;
-
-HID_KEYBD_Info_TypeDef *USBH_GetKeyboardInfo() {
-	if(!usb_keyboard_connected) return NULL;
-	return USBH_HID_GetKeybdInfo(&hUSBHost);
-}
-
-static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
-{
-
-  switch(id)
-  {
-  case HOST_USER_SELECT_CONFIGURATION:
-	//  printf("USB ---- HOST_USER_SELECT_CONFIGURATION\n");
-    break;
-
-  case HOST_USER_DISCONNECTION:
-	//  usb_keyboard_connected = false;
-	//  printf("USB ---- APPLICATION_DISCONNECT\n");
-    break;
-
-  case HOST_USER_CLASS_ACTIVE:
-
-
-	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
-	//  usb_keyboard_connected=true;
-    break;
-
-  case HOST_USER_CONNECTION:
-
-	 // printf("USB ---- HOST_USER_CONNECTION\r\n");
-
-
-	  //if(USBH_HID_GetDeviceType(&hUSBHost) == HID_KEYBOARD) {
-	  //		  usb_keyboard_connected = true;
-	  	//	  printf("Keyboard Connected!\r\n");
-	  	//  }
-    break;
-  case HOST_USER_CLASS_SELECTED:
-
-	//  if(type == HID_KEYBOARD)  usb_keyboard_connected = true;
-	  break;
-  case HOST_USER_UNRECOVERED_ERROR:
-  	 // printf("USB ---- HOST_USER_UNRECOVERED_ERROR\r\n");
-  	  break;
-  default:
-	//  printf("USB ---- UNKNOWN\n");
-    break;
-  }
-}
-
 void other_things() {
-	USBH_Process(&hUSBHost);
+	//USBH_Process(&hUSBHost);
 }
 
 void Error_Handler(void);
 void refreshUSB() {
     /* USB Host Background task */
-    USBH_Process(&hUSBHost);
+    //USBH_Process(&hUSBHost);
 }
 void SetupUSB() {
-	// be sure to kill the power FIRST in case of a reset so the usb device can be reset
-	//  USBH_LL_DriverVBUS (&hUSBHost, FALSE);;
-	//  HAL_Delay(1000);
-	 /* Init HID Application */
-	  /* Init Host Library */
-	  USBH_Init(&hUSBHost, USBH_UserProcess, 0);
-	  USBH_Stop(&hUSBHost); // reset in case of shut down
-//jj
-	  /* Add Supported Class */
-	//  USBH_RegisterClass(&hUSBHost, USBH_HID_CLASS);
-	//  USBH_HID_InstallDriver(USBH_HID_JoystickInit);
-
-	  /* Start Host Process */
-	  USBH_Start(&hUSBHost);
+	  USBH_Init(NULL);
 	  printf("SetupUSB Finished\r\n");
 
 }
 void testusb() {
 	while(1){
-		refreshUSB();
+		USBH_Poll() ;
 	}
 }
 void SystemTimerConfig();
@@ -238,6 +172,8 @@ int main(void)
  // layer0_address = malloc(800 * 480 * sizeof(uint32_t) * 2);
   BSP_LCD_Init();
   SystemTimerConfig();
+  // clear the debug terminal
+  uart_print("\033[2J\033[;H");
    // OnError_Handler(lcd_status != LCD_OK);
 
     BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
