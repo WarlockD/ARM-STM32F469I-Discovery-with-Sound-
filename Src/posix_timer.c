@@ -17,9 +17,6 @@
 
 static TIM_HandleTypeDef ClockHandle;
 static volatile uint32_t tv_sec = 0;
-static uint32_t tim6_us_prescale = 0;
-static uint32_t tim6_ms_prescale = 0;
-/* Clocks, P1003.1b-1993, p. 263 */
 
  volatile struct itimerval itimer_real;
 
@@ -132,16 +129,10 @@ int _gettimeofday (struct timeval * tp, struct timezone * tzp)
   /* Return fixed data for the timezone.  */
   if (tzp) tzp->tz_dsttime = tzp->tz_minuteswest = 0;
   if(tp) {
-#if 0
 	  __HAL_TIM_DISABLE_IT(&ClockHandle, TIM_IT_UPDATE);
 	  tp->tv_usec = __HAL_TIM_GET_COUNTER(&ClockHandle);
 	  tp->tv_sec = tv_sec;
 	  __HAL_TIM_ENABLE_IT(&ClockHandle, TIM_IT_UPDATE);
-#else
-	  volatile uint32_t ticks = HAL_GetTick();
-	  tp->tv_sec = ticks / 1000;
-	  tp->tv_usec = (ticks % 1000)*1000;
-#endif
   }
   return 0;
 }
@@ -152,28 +143,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void TIMx_IRQHandler(void)
 {
-  HAL_TIM_IRQHandler(&ClockHandle);
+
+   HAL_TIM_IRQHandler(&ClockHandle);
 }
 
 
 void SystemTimerConfig() {
-	/* Compute the prescaler value to have TIMx counter clock equal to 10000 Hz */
-	tim6_us_prescale = (uint32_t)((timer_get_source_freq(6) / 1000000) - 1); // 1us
-	tim6_ms_prescale = tim6_us_prescale*1000;
-	//TIM6->CR1 |= TIM_CR1_UDIS; // TIM_CR1_ARPE
-	TIM6->PSC  = tim6_us_prescale;
-
 	uint32_t  uwPrescalerValue = (uint32_t)((timer_get_source_freq(2) / 1000000) - 1); // 1us
-	printf("tm6 Prescaler: %lu, %lu\r\n", tim6_us_prescale,tim6_ms_prescale);
 	/* Set TIMx instance */
 	ClockHandle.Instance = TIMx;
-
-	/* Initialize TIMx peripheral as follows:
-	   + Period = 10000 - 1
-	   + Prescaler = ((SystemCoreClock / 2)/10000) - 1
-	   + ClockDivision = 0
-	   + Counter direction = Up
-	*/
 	ClockHandle.Init.Period            = 999999; /* 1 second */
 	ClockHandle.Init.Prescaler         = uwPrescalerValue;
 	ClockHandle.Init.ClockDivision     = 0;
@@ -181,25 +159,9 @@ void SystemTimerConfig() {
 	ClockHandle.Init.RepetitionCounter = 0;
 	TIMx_CLK_ENABLE();
 	assert (HAL_TIM_Base_Init(&ClockHandle) == HAL_OK);
-
-	assert(HAL_TIM_Base_Start_IT(&ClockHandle) == HAL_OK);
-	/* Set the TIMx priority */
-
-	HAL_NVIC_SetPriority(TIMx_IRQn, 3, 0);
-	/* Enable the TIMx global Interrupt */
-	HAL_NVIC_EnableIRQ(TIMx_IRQn);
-	//HAL_SetTicks(0); // should sync this better
-
-#if 0
-	while(1){
-		if(sssf) {
-			sssf= 0;
-			struct timeval current;
-			gettimeofday(&current,NULL);
-			print_time("SIGNAL: ", &current);
-			signal(SIGALRM, test_signal);
-		}
-	//	printf("Next");
-	}
-#endif
+	__HAL_TIM_ENABLE_IT(&ClockHandle, TIM_IT_UPDATE);
+	__HAL_TIM_ENABLE(&ClockHandle);
+	//assert(HAL_TIM_Base_Start_IT(&ClockHandle) == HAL_OK);
+	HAL_NVIC_SetPriority(TIMx_IRQn, 3, 0); //Enable the TIMx global Interrupt
+	HAL_NVIC_EnableIRQ(TIMx_IRQn); //should sync this better
 }

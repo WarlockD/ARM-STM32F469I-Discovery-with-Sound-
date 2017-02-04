@@ -330,6 +330,7 @@ __weak void  HAL_HCD_MspDeInit(HCD_HandleTypeDef *hhcd)
   *           0 : do ping inactive / 1 : do ping active 
   * @retval HAL status
   */
+
 HAL_StatusTypeDef HAL_HCD_HC_SubmitRequest(HCD_HandleTypeDef *hhcd,
                                            uint8_t ch_num, 
                                            uint8_t direction,

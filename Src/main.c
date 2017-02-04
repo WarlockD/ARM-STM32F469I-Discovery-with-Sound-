@@ -125,7 +125,14 @@ void SetupUSB() {
 
 }
 void testusb() {
+	uint32_t start = HAL_GetTick()+1000;
 	while(1){
+		uint32_t tick = HAL_GetTick();
+		if(tick > start){
+			start +=1000;
+		//	USBH_DbgLog(" TICK!");
+		}
+
 		USBH_Poll() ;
 	}
 }
