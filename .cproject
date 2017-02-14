@@ -33,20 +33,21 @@
 								<option defaultValue="gnu.c.optimization.level.none" id="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level.1854498428" name="Optimization Level" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="fr.ac6.managedbuild.gnu.c.optimization.level.debug" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.1564471419" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1071076670" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src/drivers"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Middlewares/Third_Party/FatFs/src"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/CMSIS/Include"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Discovery"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/Common"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Components/otm8009a"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/opl"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/DoomSrc/chcodoom"/>
-									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Debug"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Inc}"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/netbsd}&quot;"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/STM32F4xx_HAL_Driver/Inc}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Third_Party/FatFs/src/drivers}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/CMSIS/Device/ST/STM32F4xx/Include}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Third_Party/FatFs/src}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/CMSIS/Include}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Discovery}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Components/Common}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Components/otm8009a}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/DoomSrc}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/DoomSrc/opl}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/DoomSrc/chcodoom}"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Debug}"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1134411373" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
