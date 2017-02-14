@@ -34,7 +34,7 @@
 								<option id="gnu.c.compiler.option.debugging.level.1564471419" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1071076670" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Inc}"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/netbsd}&quot;"/>
+									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/netbsd}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/STM32F4xx_HAL_Driver/Inc}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy}"/>
 									<listOptionValue builtIn="false" value="${workspace_loc:/${ProjName}/Middlewares/Third_Party/FatFs/src/drivers}"/>
