@@ -945,6 +945,9 @@ HAL_StatusTypeDef  USB_DevDisconnect (USB_OTG_GlobalTypeDef *USBx)
   * @param  USBx : Selected device
   * @retval HAL status
   */
+#ifdef READ_INTERRUPTS_AS_MACRO
+
+#else
 uint32_t  USB_ReadInterrupts (USB_OTG_GlobalTypeDef *USBx)
 {
   uint32_t v = 0U;
@@ -953,7 +956,7 @@ uint32_t  USB_ReadInterrupts (USB_OTG_GlobalTypeDef *USBx)
   v &= USBx->GINTMSK;
   return v;  
 }
-
+#endif
 /**
   * @brief  USB_ReadDevAllOutEpInterrupt: return the USB device OUT endpoints interrupt status
   * @param  USBx : Selected device
@@ -1594,7 +1597,6 @@ HAL_StatusTypeDef USB_HC_Halt(USB_OTG_GlobalTypeDef *USBx , uint8_t hc_num)
   else
   {
     USBx_HC(hc_num)->HCCHAR |= USB_OTG_HCCHAR_CHDIS;
-    
     if ((USBx_HOST->HPTXSTS & 0xFFFFU) == 0U)
     {
       USBx_HC(hc_num)->HCCHAR &= ~USB_OTG_HCCHAR_CHENA;

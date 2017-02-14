@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "usart.h"
 
 const char* ENUM_OUT_OF_RANGE(const char* e, uint8_t value) {
 	static char msg[64];
@@ -83,6 +84,15 @@ ENUM_TO_STRING_START(USB_OTG_URBStateTypeDef)
 	ENUM_TO_STRING_ADD(URB_STALL)
 ENUM_TO_STRING_END(USB_OTG_URBStateTypeDef)
 
+ENUM_TO_STRING_START(HCD_URBStateTypeDef)
+	ENUM_TO_STRING_ADD(URB_IDLE)
+	ENUM_TO_STRING_ADD(URB_DONE)
+	ENUM_TO_STRING_ADD(URB_NOTREADY)
+	ENUM_TO_STRING_ADD(URB_NYET)
+	ENUM_TO_STRING_ADD(URB_ERROR)
+	ENUM_TO_STRING_ADD(URB_STALL)
+ENUM_TO_STRING_END(HCD_URBStateTypeDef)
+
 ENUM_TO_STRING_START(USB_OTG_HCStateTypeDef)
 	ENUM_TO_STRING_ADD(HC_IDLE)
 	ENUM_TO_STRING_ADD(HC_XFRC)
@@ -149,7 +159,7 @@ PRINT_STRUCT_BEGIN(USB_DEVICE_DESCRIPTOR)
 	PRINT_VALUE_BYTE(iSerialNumber);
 	PRINT_VALUE_INT(bNumConfigurations);
 PRINT_STRUCT_END(USB_DEVICE_DESCRIPTOR)
-
+#if 0
 static const char* EndpointAttributeToString(uint8_t bmAttributes) {
 	switch((bmAttributes & 0x03)){
 	case 0x00:return "Control";
@@ -225,24 +235,11 @@ void USBH_Print_Endpoint(const USBH_EndpointTypeDef* value) {
 		"EP_TYPE_INTR",
 	};
 	printf("Pipe(%i) Type(%s) Direction(%s) Status(%s) UrbState(%s)\r\n",
-			value->Channel,
+			value->Pipe,
 			ctrlTbl[value->Type],
 			value->Direction ? "IN" : "OUT",
 			ENUM_TO_STRING(USBH_EndpointStatusTypeDef, value->status),
 			ENUM_TO_STRING(USBH_URBStateTypeDef, value->urb_state));
-	printf("    "); USBH_Print_EndpointInit(&value->Init);
+	//printf("    "); USBH_Print_EndpointInit(&value->Init);
 }
-void USBH_Print_Buffer(uint8_t* data, size_t length) {
-		while(length){
-			if(length>8) {
-				printf("%2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X \r\n",
-						data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
-				length-=8;
-				data+=8;
-			} else {
-				 while(length--) printf("%2.2X ", *data++);
-				 printf("\r\n");
-				 break;
-			}
-		}
-}
+#endif

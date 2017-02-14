@@ -46,7 +46,7 @@
 #include "dsihost.h"
 
 #include "gpio.h"
-
+#include "pin_names.h"
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */

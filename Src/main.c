@@ -119,8 +119,10 @@ void refreshUSB() {
     /* USB Host Background task */
     //USBH_Process(&hUSBHost);
 }
+void USB_HOST_Init();
 void SetupUSB() {
-	  USBH_Init(NULL);
+	USB_HOST_Init();
+	//  USBH_Init(NULL);
 	  printf("SetupUSB Finished\r\n");
 
 }
@@ -149,11 +151,11 @@ int main(void)
   /* MCU Configuration----------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+
 
   /* Configure the system clock */
-  SystemClock_Config();
-
+  SystemClock_Config(); //  SystemTimerConfig(); handled here
+  HAL_Init();
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -178,17 +180,20 @@ int main(void)
   BSP_SDRAM_Init();
  // layer0_address = malloc(800 * 480 * sizeof(uint32_t) * 2);
   BSP_LCD_Init();
-  SystemTimerConfig();
+
   // clear the debug terminal
   uart_print("\033[2J\033[;H");
+  DbgUsr("Starting LCD/TS Init");
    // OnError_Handler(lcd_status != LCD_OK);
 
     BSP_LCD_LayerDefaultInit(0, LCD_FB_START_ADDRESS);
     BSP_LCD_SelectLayer(0);
     BSP_LCD_Clear(LCD_COLOR_BLACK);
     BSP_TS_Init(800,480);
+    DbgUsr("Starting USB Init");
     SetupUSB();
    testusb() ;
+   DbgUsr("Starting SD Init");
     printf("Then printf is setup\r\n");
    // test_usb_loop();
     // ok lets do audio!
@@ -321,7 +326,7 @@ HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
 /* SysTick_IRQn interrupt configuration */
-HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
 }
 /** System Clock Configuration
 */
@@ -400,6 +405,44 @@ void SystemClock_Config_Old(void)
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
+void DebugMessage(LogLevelTypeDef level, const char* message){
+	static const char* level_to_string[] = {
+		ANSI_COLOR_FORGROUND_RED "ERROR" ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_YELLOW "WARN" ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_WHITE "USER " ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_WHITE "DEBUG" ANSI_COLOR_RESET ": ",
+	};
+	struct timeval t1;
+	char buf[128];
+	gettimeofday(&t1, NULL);
+	int len=sprintf(buf,"[%lu.%06lu] %s: %s\r\n", t1.tv_sec ,t1.tv_usec ,level_to_string[level],message);
+	buf[127]=0; // sanity
+	uart_write((uint8_t*)buf,len);
+}
+void PrintDebugMessage(LogLevelTypeDef level, const char* fmt, ...){
+	char buf[128];
+	va_list va;
+	va_start(va,fmt);
+	vsprintf(buf,fmt,va);
+	va_end(va);
+	buf[127]=0;
+	DebugMessage(level,buf);
+}
+
+void DebugPrintBufferByte(uint8_t* data, size_t length) {
+		while(length){
+			if(length>8) {
+				printf("%2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X \r\n",
+						data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7]);
+				length-=8;
+				data+=8;
+			} else {
+				 while(length--) printf("%2.2X ", *data++);
+				 printf("\r\n");
+				 break;
+			}
+		}
+}
 
 /* USER CODE BEGIN 4 */
 #if 0
@@ -428,9 +471,12 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler */
   /* User can add his own implementation to report the HAL error return state */
-  while(1) 
-  {
-  }
+	while(1) {
+
+			BSP_LED_Toggle(LED_RED);
+			HAL_Delay(500);
+
+		}
   /* USER CODE END Error_Handler */ 
 }
 
@@ -444,15 +490,25 @@ void Error_Handler(void)
    * @retval None
    */
 void __assert_func(const char * file, int line, const char * func, const char * value){
-	printf("ASSERT(%s:%i): %s()  %s\r\n",file,line,func,value);
-	while(1) {}
+	uart_print("ASSERT(%s:%i): %s()  %s\r\n",file,line,func,value);
+	while(1) {
+
+		BSP_LED_Toggle(LED_RED);
+		HAL_Delay(500);
+
+	}
 }
 void assert_failed(uint8_t* file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-	   printf("Wrong parameters value: file %s on line %lu\r\n", file, line);
+	uart_print("Wrong parameters value: file %s on line %lu\r\n", file, line);
   /* USER CODE END 6 */
+	while(1) {
 
+			BSP_LED_Toggle(LED_RED);
+			HAL_Delay(500);
+
+		}
 }
 
 #endif

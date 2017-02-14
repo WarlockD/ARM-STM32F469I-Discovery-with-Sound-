@@ -29,6 +29,7 @@
 #include "usbh_desc.h"
 #include <assert.h>
 
+#if 0
 #define  USB_LEN_DESC_HDR                               0x02
 #define  USB_LEN_DEV_DESC                               0x12
 #define  USB_LEN_CFG_DESC                               0x09
@@ -803,25 +804,5 @@ static USBH_StatusTypeDef USBH_HandleControl ()
   }
   return status;
 }
-
-/**
-* @}
-*/ 
-
-/**
-* @}
-*/ 
-
-/**
-* @}
-*/
-
-/**
-* @}
-*/ 
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-
-
-
+#endif
 

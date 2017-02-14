@@ -1,115 +1,118 @@
 #include "usb_host.h"
 #include "usbh_desc.h"
 #include "link_list.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <stdarg.h>
 #include "usart.h"
 
+#include "usb_host_new.h"
+
+#define USB_PORT USB_OTG_FS
+//#define USB_HOST USB_OTG_FS
 // timer functions
-#define TIMx                           TIM3
-#define TIMx_CLK_ENABLE()              __HAL_RCC_TIM3_CLK_ENABLE()
-/* Definition for TIMx's NVIC */
-#define TIMx_IRQn                      TIM3_IRQn
-#define TIMx_IRQHandler                TIM3_IRQHandler
-typedef void (*TimerCallback)(void*);
-//static TIM_HandleTypeDef USBH_ProcessTimer;
-typedef enum {
-	HOST_PORT_DISCONNECTED=0,
-	HOST_PORT_CONNECTED,
-	HOST_PORT_WAIT_FOR_ATTACHMENT,
-	HOST_PORT_DISCONNECTING_PORT_OFF,
-	HOST_PORT_DISCONNECTING_PORT_ON,
-	HOST_PORT_IDLE,		// no data going in or out
-	HOST_PORT_ACTIVE,	// waiting for packet or finish trasmit
-} PORT_StateTypeDef;
-static PORT_StateTypeDef port_state = HOST_PORT_DISCONNECTED;
+
 // only support 15 end points in high and only 11 in full ugh, REMEMBER THIS
 HCD_HandleTypeDef hhcd;
-static uint32_t usbh_timer = 0;
 static USBH_PortSpeedTypeDef port_speed;
-static TimerCallback timer_callback = NULL;
-static void* timer_data_callback=NULL;
-static volatile uint32_t ms_prescale_value;
 
+#define USBH_HCTSIZ_XFRSIZ(VALUE) ( (VALUE)          & USB_OTG_HCTSIZ_XFRSIZ)
+#define USBH_HCTSIZ_PKTCNT(VALUE) ( ((VALUE) << 19U) & USB_OTG_HCTSIZ_PKTCNT)
+#define USBH_HCCHAR_EPNUM(VALUE)  ( ((VALUE) << 11U) & USB_OTG_HCCHAR_EPNUM)
+#define USBH_HCCHAR_TYPE(VALUE)   ( ((VALUE) << 18U) & USB_OTG_HCCHAR_EPTYP)
+#define USBH_HCCHAR_DEVICE_ADDRESS(VALUE)   		( ((VALUE) << 22U) & USB_OTG_HCCHAR_DAD)
+#define USBH_HCCHAR_DEVICE_MAX_PACKET_SIZE(VALUE)   ( ((VALUE) <<  0U) & USB_OTG_HCCHAR_MPSIZ)
+#define USBH_HCCHAR_DEVICE_EP_TYPE(VALUE)           ( ((VALUE) << 18U) & USB_OTG_HCCHAR_EPTYP)
+#define USBH_HCCHAR_DEVICE_EP_NUM(VALUE)            ( ((VALUE) << 11U) & USB_OTG_HCCHAR_EPNUM)
+#define HCCHAR_GET_DAD(REG)              			( ((REG) & USB_OTG_HCCHAR_DAD) >> 22U)
+#define HCCHAR_GET_MPSIZ(REG)             			( ((REG) & USB_OTG_HCCHAR_MPSIZ) >> 0U)
+#define HCCHAR_GET_EPTYP(REG)              			( ((REG) & USB_OTG_HCCHAR_EPTYP) >> 18U)
+#define HCCHAR_GET_EPNUM(REG)                      ( ((REG) & USB_OTG_HCCHAR_EPNUM) >> 11U)
+#define HCCHAR_GET_EPDIR(REG)                      ( ((REG) & USB_OTG_HCCHAR_EPDIR) ? 1 : 0)
+#define IS_EP_IN(EP) (((EP)->HCCAR &  USB_OTG_HCCHAR_EPDIR) !=0)
+#define IS_ODD_FRAME ((USB_HOST(hhcd.Instance)->HFNUM & 0x01U) ? 0U : 1U)
+
+void PrintHCCHAR(uint32_t hcchar){
+	USBH_DbgLog("HCCHAR = DEV_ADDR(%i) | MPS(%i) | EP_NUM(%i) | EP_TYPE(%i) | EP_DIR(%i)",
+			HCCHAR_GET_DAD(hcchar),
+			HCCHAR_GET_MPSIZ(hcchar),
+			HCCHAR_GET_EPNUM(hcchar),
+			HCCHAR_GET_EPTYP(hcchar),
+			HCCHAR_GET_EPDIR(hcchar)
+	);
+}
 struct __PipeStatus ;
-typedef void (*PipeCallback)(struct __PipeStatus *, uint8_t);
+typedef struct {
+	union {
+		uint32_t* adata;
+		uint8_t* bdata;
+	};
+	size_t length;
+	size_t pkt_cnt;
+	size_t pkt_remaining;
+	size_t xfer_len;
+} t_alligned_data;
 
 typedef struct __PipeStatus {
-	__IO USBH_EndpointStatusTypeDef status;
-	__IO USBH_URBStateTypeDef urb_state;
-	__IO USBH_URBStateTypeDef hc_state;
+	USBH_PipeHandleTypeDef handle;
+	struct __PipeStatus* next;
+	USBH_DeviceTypeDef* owner;
+	USB_OTG_HostChannelTypeDef *hc;
 	PipeCallback Callback;
-	void* data;
-	uint32_t value;
+	void* udata;
+	t_alligned_data data;
+	uint8_t chan_num;
+	uint8_t do_ping;
 } PipeStatus;
 
-PipeStatus pipe_status[15];
+PipeStatus pipe_status_list[16];
+PipeStatus* free_pipes=NULL;
 
-void StartPipe(uint8_t i) {
-	assert(pipe_status[i].status != USBH_PIPE_WORKING);
-	pipe_status[i].status = USBH_PIPE_WORKING;
-	pipe_status[i].urb_state = USBH_URB_IDLE;
-	pipe_status[i].hc_state = HC_IDLE;
-	pipe_status[i].Callback = NULL;
-	pipe_status[i].data = NULL;
-	pipe_status[i].value = 0;
-
+static  PipeStatus* OpenPipe(USBH_DeviceTypeDef* device){
+	assert(device);
+	if(free_pipes==NULL) return NULL;
+	PipeStatus* pipe = free_pipes;
+	free_pipes = pipe->next;
+	pipe->owner = device;
+	pipe->Callback = NULL;
+	pipe->udata = NULL;
+	pipe->handle.hc_state = HC_IDLE;
+	pipe->handle.status = USBH_PIPE_IDLE;
+	pipe->handle.urb_state = USBH_URB_IDLE;
+	pipe->next = NULL;
+	  /* Enable the top level host channel interrupt. */
+	USB_HOST(hhcd.Instance)->HAINTMSK |= (1 << pipe->chan_num);
+	return pipe;
 }
-void StopPipe(uint8_t i) {
-	pipe_status[i].status = USBH_PIPE_IDLE;
-	pipe_status[i].Callback = NULL;
-	pipe_status[i].data = NULL;
-	pipe_status[i].value = 0;
+
+static void ClosePipe(PipeStatus* pipe) {
+	assert(pipe);
+	assert(pipe->owner);
+	assert(pipe->handle.status == USBH_PIPE_IDLE);
+	pipe->owner = NULL;
+	pipe->Callback = NULL;
+	pipe->udata = NULL;
+	pipe->next = free_pipes;
+	free_pipes = pipe;
+	USB_HOST(hhcd.Instance)->HAINTMSK &= ~(1 << pipe->chan_num);
 }
-void StartPipeCallback(uint8_t i,PipeCallback callback, void* data, uint32_t value) {
-	assert(pipe_status[i].status != USBH_PIPE_WORKING);
-	pipe_status[i].status = USBH_PIPE_WORKING;
-	pipe_status[i].urb_state = USBH_URB_IDLE;
-	pipe_status[i].hc_state = HC_IDLE;
-	pipe_status[i].Callback = callback;
-	pipe_status[i].data = data;
-	pipe_status[i].value = value;
+void USBH_SetPipeCallback(USBH_PipeHandleTypeDef* handle,PipeCallback callback, void*udata){
+	assert(handle);
+	PipeStatus* pipe = (PipeStatus*)handle;
+	pipe->Callback = callback;
+	pipe->udata = udata;
 }
-typedef struct {
-	uint8_t* data;
-	uint32_t size;
-} t_buffer;
 
-typedef struct _internal_endpoint {
-	USBH_EndpointTypeDef ep;
-	bool initialized;
-	void (*Callback)(const USBH_EndpointTypeDef*, uint8_t);
-	void* pData;
-} t_internal_endpoint;
 
-struct _internal_event {
-	uint32_t event;
-	uint32_t lparm;
-	uint32_t rparm;
-};
-#define MAX_ENDPOINTS 15
-t_internal_endpoint endpoints[MAX_ENDPOINTS];
 
-typedef struct {
-	uint8_t ep_type;
-	uint8_t ep_direction;
-	uint8_t do_ping;
-} EpTypeConvertTypeDef;
-
-static const EpTypeConvertTypeDef EpTypeConvert[] = {
-	{ EP_TYPE_CTRL, 0,  0 },
-	{ EP_TYPE_CTRL, 1,  0 },
-	{ EP_TYPE_ISOC, 0,  1 },
-	{ EP_TYPE_ISOC, 1,  0 },
-	{ EP_TYPE_BULK, 0,  1 },
-	{ EP_TYPE_BULK, 1,  0 },
-	{ EP_TYPE_INTR, 0,  1 },
-	{ EP_TYPE_INTR, 1,  0 },
-};
+USBH_PipeHandleTypeDef* USBH_OpenPipe(USBH_DeviceTypeDef* device){
+	PipeStatus* ihandle = OpenPipe(device);
+	if(!ihandle) return NULL;
+	USBH_ResetPipe((USBH_PipeHandleTypeDef*)&(ihandle->handle));
+	/* Make sure host channel interrupts are enabled. */
+	hhcd.Instance->GINTMSK |= USB_OTG_GINTMSK_HCIM;
+	return (USBH_PipeHandleTypeDef*)(&(ihandle->handle));
+}
+void USBH_ClosePipe(USBH_PipeHandleTypeDef* handle){
+	ClosePipe((PipeStatus*)handle);
+}
 
 void* USBH_malloc(size_t size, void** owner) {
 	(void)owner;
@@ -120,63 +123,8 @@ void USBH_memset(void* ptr, uint8_t value, size_t size) { memset(ptr,value,size)
 void USBH_memcpy(void* dst, const void* src, size_t size){ memcpy(dst,src,size); }
 
 
-void USBH_Log(USBH_LogLevelTypeDef level, const char* fmt, ...){
-	uint32_t ticks = HAL_GetTick();
-	static const char* level_to_string[] = {
-			"\033[41mERROR\033[0m:",
-			"\033[33mWARN \033[0m:",
-			"\033[33mUSER \033[0m:",
-			"\033[37mDEBUG\033[0m:",
-	};
-	struct timeval t1;
-	gettimeofday(&t1, NULL);
-	uart_print("[%lu.%lu]%s", t1.tv_sec ,t1.tv_usec ,level_to_string[level]);
-	char buf[128];
-	va_list va;
-	va_start(va,fmt);
-	vsprintf(buf,fmt,va);
-	va_end(va);
-	buf[127]=0;
-	uart_puts(buf);
-	uart_puts("\r\n");
-}
-
-//static TIM_HandleTypeDef USBH_Timer;
-
-static void InitUSBTimer() {
-	for(int i=0;i<15;i++) StopPipe(i);
-	printf("Its only bytes=%i\r\n", sizeof(USBH_EndpointTypeDef));
-	// TIM{2,3,4,5,6,7,12,13,14} are on APB1
-	 uint32_t source = HAL_RCC_GetPCLK1Freq();
-	 if ((uint32_t)(RCC->CFGR & RCC_CFGR_PPRE1) != RCC_HCLK_DIV1)   source *= 2;
-	 source /=2; // TIM_CR1_CKD_1
-	  ms_prescale_value = (uint32_t)(((source/ 1000)) - 1); // 2ms
-	  assert(ms_prescale_value < 0x10000);
-	  uart_print("Setting source=%lu PSC=%lu \r\n", source,ms_prescale_value);
-#if 0
-	  USBH_ProcessTimer.Instance = TIMx;
-	  USBH_ProcessTimer.Init.Period            = 999999; /* 1 second */
-	  USBH_ProcessTimer.Init.Prescaler         = uwPrescalerValue;
-	  USBH_ProcessTimer.Init.ClockDivision     = 0;
-	  USBH_ProcessTimer.Init.CounterMode       = TIM_COUNTERMODE_UP;
-	  USBH_ProcessTimer.Init.RepetitionCounter = 0;
-	  	TIMx_CLK_ENABLE();
-	  	assert (HAL_TIM_Base_Init(&USBH_ProcessTimer) == HAL_OK);
-#endif
-	  	///assert(HAL_TIM_Base_Start_IT(&USBH_ProcessTimer) == HAL_OK);
-	 TIMx_CLK_ENABLE();
-	 TIMx->PSC  = (uint16_t)ms_prescale_value;
-	 TIMx->EGR = TIM_EGR_UG;
-	 while ((TIMx->SR & TIM_SR_UIF)==0);
-	 TIMx->SR=0; // clear
-	 uint32_t value = TIMx->PSC;
-	 uart_print("Setting source=%i    PSC=%i \r\n", (int)source, (int)value);
-	 assert( TIMx->PSC== ms_prescale_value);
-	 HAL_NVIC_SetPriority(TIMx_IRQn, 3, 0);
-	 HAL_NVIC_EnableIRQ(TIMx_IRQn);  /* Enable the TIMx global Interrupt */
-	// TIMx->CR1 |= TIM_CR1_CEN | TIM_CR1_OPM;
-}
 volatile uint32_t ticks_test;
+#if 0
 void TIMx_IRQHandler() {
 	if(TIMx->SR & TIM_SR_UIF) {
 		ticks_test = HAL_GetTick()-ticks_test;
@@ -185,72 +133,123 @@ void TIMx_IRQHandler() {
 		uart_print("Ticks %lu\r\n", ticks_test);
 	}
 }
-void SetTimer(uint16_t ms_delay) {
-	assert((TIMx->CR1 & TIM_CR1_CEN)==0); // test if we are running
-	TIMx->SR = 0;
-	//TIMx->PSC  = ms_prescale_value;
-	TIMx->ARR = (uint16_t)(ms_delay<<1); 	// have to double it as its a 16bit counter
-	TIMx->DIER |= TIM_DIER_UIE;		// make sure IT is enabled
+#endif
 
-}
-static void OneShotTimer(uint16_t ms_delay, TimerCallback func, void* data){
-	uart_print("StartTicks %lu\r\n", ms_delay);
-	timer_data_callback = data;
-	timer_callback = func;
-	SetTimer(ms_delay);
-	ticks_test = HAL_GetTick();
-	TIMx->CR1 = TIM_CR1_CEN | TIM_CR1_OPM  | TIM_CR1_CKD_0;; // OPM is one shot and cmkd_! /4
-}
 
-static void _InitEndpoint(USBH_EndpointTypeDef* ep) {
-	const EpTypeConvertTypeDef* cvt = &EpTypeConvert[ep->Init.Type];
-	ep->Direction = cvt->ep_direction;
-	ep->DoPing = cvt->do_ping;
-	ep->Type = cvt->ep_type;
-	if(ep->Init.Speed == USBH_SPEED_DEFAULT_PORT) ep->Init.Speed = (USBH_PortSpeedTypeDef)HAL_HCD_GetCurrentSpeed(&hhcd);
-	if(ep->Direction) ep->Init.Number|=0x80; // not sure if this is always true but eh
-	HAL_HCD_HC_Init(&hhcd, ep->Channel, ep->Init.Number, ep->Init.DevAddr, ep->Init.Speed, ep->Init.Type , ep->Init.MaxPacketSize);
+static  inline void SetHostChannelEnable(USB_OTG_HostChannelTypeDef * hc){
+	uint32_t tmpreg = hc->HCCHAR; /* Set host channel enable */
+	tmpreg &= ~USB_OTG_HCCHAR_CHDIS;
+	tmpreg |= USB_OTG_HCCHAR_CHENA;
+	hc->HCCHAR = tmpreg;
 }
-const USBH_EndpointTypeDef*
-USBH_OpenEndpoint(const USBH_EndpointInitTypeDef* Init) {
-	uint8_t max = port_speed == USBH_SPEED_FULL ? (11-1) : (15-1);
-	for(uint8_t i=0; i < max; i++){
-		t_internal_endpoint* iep = &endpoints[i];
-		if(iep->ep.status == USBH_PIPE_NOT_ALLOCATED) {
-			iep->ep.status = USBH_PIPE_IDLE;
-			iep->ep.Channel = i+1;
-			const EpTypeConvertTypeDef* cvt = &EpTypeConvert[Init->Type];
-			iep->ep.Init = *Init;
-			_InitEndpoint(&iep->ep);
-			iep->initialized = true;
-			return &iep->ep;
-		}
-	}
-	return NULL;
+static inline void USBH_DoPing(USB_OTG_HostChannelTypeDef * hc){
+	hc->HCTSIZ = USBH_HCTSIZ_PKTCNT(1) | USB_OTG_HCTSIZ_DOPING;
+	SetHostChannelEnable(hc);
 }
-void USBH_ModifyEndpoint(const USBH_EndpointTypeDef* ep, const USBH_EndpointInitTypeDef* Init) {
-	USBH_EndpointTypeDef* _ep = (USBH_EndpointTypeDef*)ep;
-	_ep->Init = *Init;
-	_InitEndpoint(_ep);
-}
-void USBH_ModifyEndpointCallback(const USBH_EndpointTypeDef* ep,   void (*Callback)(const USBH_EndpointTypeDef*, void*), void* userdata){
-	t_internal_endpoint* _ep = &endpoints[ep->Channel-1];
-	_ep->Callback = Callback;
-	_ep->pData = userdata;
-}
-
-void CloseEndpoint(const USBH_EndpointTypeDef* ep) {
-	t_internal_endpoint* _ep = &endpoints[ep->Channel-1];
-	_ep->ep.status = USBH_PIPE_NOT_ALLOCATED;
-	_ep->Callback = NULL;
-    _ep->pData = NULL;
-	HAL_HCD_HC_Halt(&hhcd,ep->Channel);
-}
-
 USBH_URBStateTypeDef USBH_PipeStatus(uint8_t pipe) {
 	return (USBH_URBStateTypeDef)HAL_HCD_HC_GetURBState(&hhcd,pipe);
 }
+#if 0
 
+void USBH_WritePacket(USB_OTG_GlobalTypeDef *USBx, uint8_t *src, uint8_t ch_ep_num, uint16_t len, uint8_t dma)
+{
+  uint32_t count32b = 0U , i = 0U;
+
+  if (dma == 0U)
+  {
+    count32b =  (len + 3U) / 4U;
+    for (i = 0U; i < count32b; i++, src += 4U)
+      USBx_DFIFO(ch_ep_num) = *((__packed uint32_t *)src);
+    }
+  }
+}
+
+#pragma GCC optimize ("O0")
+HAL_StatusTypeDef USBH_StartTrasfer(USBH_DeviceTypeDef* dev, USBH_PipeHandleTypeDef* hpipe, uint8_t dma)
+{
+	PipeStatus* pipe = (PipeStatus*)hpipe;
+	USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+  uint8_t  is_oddframe = 0U;
+  uint16_t len_words = 0U;
+  uint16_t num_packets = 0U;
+  uint16_t max_hc_pkt_count = 256U;
+  uint32_t tmpreg = 0U;
+  uint32_t hccar = hc->HCCHAR;
+  uint16_t max_packet_size =  hccar & USB_OTG_HCCHAR_MPSIZ;
+\
+  if((USB_HOST(hhcd.Instance) != USB_OTG_FS) && (pipe->owner->Speed == USB_OTG_SPEED_HIGH))
+  {
+    if((dma == 0U) && (pipe->do_ping == 1U))
+    {
+      USB_DoPing(hc);
+      return HAL_OK;
+    }
+    else if(dma == 1U)
+    {
+      hc->HCINTMSK &= ~(USB_OTG_HCINTMSK_NYET | USB_OTG_HCINTMSK_ACKM);
+      pipe->do_ping= 0U;
+    }
+  }
+  // caculate the number of packets
+  if (pipe->data.length  > 0U)
+	  pipe->data.pkt_cnt = (pipe->data.length + max_packet_size - 1U) / max_packet_size;
+  else
+	  pipe->data.pkt_cnt = 1U;
+
+  if (hccar &  USB_OTG_HCCHAR_EPDIR) // if incomming, record how many packets we need
+	pipe->data.xfer_len = pipe->data.pkt_cnt * max_packet_size;
+  else {
+	if (pipe->data.pkt_cnt > max_hc_pkt_count){
+	  num_packets = max_hc_pkt_count;
+	  pipe->data.xfer_len = num_packets  * max_packet_size;
+  	} else {
+	  num_packets = pipe->data.pkt_cnt;
+	  pipe->data.xfer_len  = pipe->data.length;
+	}
+  }
+  // Initialize the HCTSIZn register
+  hc->HCTSIZ = USBH_HCTSIZ_XFRSIZ(pipe->data.xfer_len) | USBH_HCTSIZ_PKTCNT(pipe->data.pkt_cnt) | USB_OTG_HCTSIZ_DPID;
+  /* xfer_buff MUST be 32-bits aligned */
+  if (dma) hc->HCDMA = (uint32_t)pipe->data.adata;
+
+  if(IS_ODD_FRAME) hccar |= USB_OTG_HCCHAR_ODDFRM; else hccar &= ~USB_OTG_HCCHAR_ODDFRM;
+  // Set host channel enable
+  hccar &= ~USB_OTG_HCCHAR_CHDIS;
+  hccar |= USB_OTG_HCCHAR_CHENA;
+  hc->HCCHAR = hccar; // enable
+
+  if (dma == 0U) /* Slave mode */
+  {
+	 // if trasmitting
+    if((hccar &  USB_OTG_HCCHAR_EPDIR) && (pipe->data.length > 0U))
+    {
+    	if(hccar & USB_OTG_HCCHAR_EPTYP_0) {
+    		// Periodic transfer
+    		len_words = (pipe->data.xfer_len + 3U) / 4U;
+			/* check if there is enough space in FIFO space */
+			if(len_words > (USB_HOST(hhcd.Instance)->HPTXSTS & 0xFFFFU)) /* split the transfer */
+			{
+			  /* need to process data in ptxfempty interrupt */
+				hhcd.Instance->GINTMSK |= USB_OTG_GINTMSK_PTXFEM;
+			}
+    	} else {
+    		len_words = (pipe->data.xfer_len + 3U) / 4U;
+
+			/* check if there is enough space in FIFO space */
+			if(len_words > (hhcd.Instance->HNPTXSTS & 0xFFFFU))
+			{
+			  /* need to process data in nptxfempty interrupt */
+				hhcd.Instance->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+			}
+    	}
+      /* Write packet into the Tx FIFO. */
+    //  USB_WritePacket(USBx, hc->xfer_buff, hc->ch_num, hc->xfer_len, 0);
+    }
+  }
+
+  return HAL_OK;
+}
+#endif
 /**
   * @brief  Returns the USB Host Speed from the Low Level Driver.
   * @param  phost: Host handle
@@ -280,114 +279,175 @@ USBH_PortSpeedTypeDef USBH_GetSpeed()
   }
   return speed;
 }
-USBH_StatusTypeDef USBH_Init(void* user_data)
-{
-	InitUSBTimer(); // init the process timer
-  /* Set the LL Driver parameters */
-  hhcd.Instance = USB_OTG_FS;
-  hhcd.Init.Host_channels = 11;
-  hhcd.Init.dma_enable = 0;
-  hhcd.Init.low_power_enable = 0;
-  hhcd.Init.phy_itface = HCD_PHY_EMBEDDED;
-  hhcd.Init.Sof_enable = 0;
-  hhcd.Init.speed = HCD_SPEED_FULL;
-  hhcd.Init.vbus_sensing_enable = 0;
-  hhcd.Init.lpm_enable = 0;
 
-  /* Link the driver to the stack */
-  hhcd.pData = user_data;
-
-  /* Initialize the LL Driver */
-  HAL_HCD_Init(&hhcd);
-  usbh_timer = HAL_HCD_GetCurrentFrame(&hhcd);
-  USBH_Stop();
-  USBH_Start();
-  return USBH_OK;
-}
-static void SetEndPointStatus(const USBH_EndpointTypeDef* cep, USBH_EndpointStatusTypeDef status) {
-	USBH_EndpointTypeDef* ep = (USBH_EndpointTypeDef*)cep;
-	ep->status = status;
-}
-// this main function does it all, the rest are just helpers
-void  USBH_SubmitRequest(const USBH_EndpointTypeDef* ep, uint8_t* data, uint16_t length) {
-	assert(ep);
-	assert(ep->status == USBH_PIPE_IDLE);
-	SetEndPointStatus(ep, USBH_PIPE_WORKING);
-	HAL_HCD_HC_SubmitRequest (&hhcd,  ep->Channel,  ep->Direction , ep->Type ,1, data,length,ep->DoPing);
+void DMAInit() {
+	// more to this?
+	//if (cfg.dma_enable == DISABLE)
+	 // {
+	 //   USBx->GINTMSK |= USB_OTG_GINTMSK_RXFLVLM;
+	//  }
 }
 
-void  USBH_SubmitSetup(const USBH_EndpointTypeDef* ep, const USB_Setup_TypeDef* setup) {
-	assert(ep);
-	assert(setup);
-	assert(ep->status == USBH_PIPE_IDLE);
-	SetEndPointStatus(ep, USBH_PIPE_WORKING);
-	if(ep->Type != EP_TYPE_CTRL) {
-		USBH_ErrLog("Cannot submit setup without a Control Out endpoint!");
+
+void USBH_PipeChangeDirection(USBH_PipeHandleTypeDef* handle, uint8_t direction) {
+	PipeStatus* pipe = (PipeStatus*)handle;
+	__IO USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+	hhcd.hc[pipe->chan_num].ep_is_in = direction;
+	if(direction){
+		hc->HCINTMSK |= USB_OTG_HCINTMSK_BBERRM;
+		hc->HCCHAR |= USB_OTG_HCCHAR_EPDIR;
+		if(hhcd.Instance != USB_OTG_FS)
+			hc->HCINTMSK &= ~(USB_OTG_HCINTMSK_NYET | USB_OTG_HCINTMSK_ACKM);
+	} else {
+		hc->HCINTMSK &= ~USB_OTG_HCINTMSK_BBERRM;
+		hc->HCCHAR &= ~USB_OTG_HCCHAR_EPDIR;
+		if(hhcd.Instance != USB_OTG_FS)
+			hc->HCINTMSK |= (USB_OTG_HCINTMSK_NYET | USB_OTG_HCINTMSK_ACKM);
 	}
-	HAL_HCD_HC_SubmitRequest(&hhcd,  ep->Channel,  0, EP_TYPE_CTRL ,0, (uint8_t*)setup, 8,0);
 }
-USBH_URBStateTypeDef USBH_WaitEndpoint(const USBH_EndpointTypeDef* ep) {
-	uint32_t timeout = HAL_GetTick()+100;
-	do {
-		if(ep->status != USBH_PIPE_WORKING) {
-			USBH_DbgLog("USBH_WaitEndpoint pipe=%i state=%s", ep->Channel, ENUM_TO_STRING(USBH_URBStateTypeDef, ep->urb_state));
-			return ep->urb_state;
-		}
-	} while(timeout > HAL_GetTick());
-	USBH_DbgLog("USBH_WaitEndpoint pipe=%i state=%s", ep->Channel, ENUM_TO_STRING(USBH_URBStateTypeDef, USBH_URB_TIMEOUT));
-	//HAL_HCD_HC_Halt(&hhcd,ep->Channel); // stop it
-	return USBH_URB_TIMEOUT;
+
+
+
+void USBH_ConfigurePipeControl(USBH_PipeHandleTypeDef* handle){
+	PipeStatus* pipe = (PipeStatus* )handle;
+	__IO  USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+	uint8_t ch_num =  pipe->chan_num;
+	uint32_t tmp_reg;
+	hhcd.hc[ch_num].ch_num = ch_num;
+	hhcd.hc[ch_num].ep_type = EP_TYPE_CTRL;
+	hhcd.hc[ch_num].ep_num = 0;
+	hhcd.hc[ch_num].ep_is_in = 0; // set out first
+	//hc->HCINT = 0xFFFFFFFFU;  /* Clear old interrupt conditions for this host channel. */
+	hc->HCINTMSK = USB_OTG_HCINTMSK_XFRCM | USB_OTG_HCINTMSK_STALLM | USB_OTG_HCINTMSK_TXERRM
+			     | USB_OTG_HCINTMSK_DTERRM | USB_OTG_HCINTMSK_AHBERR | USB_OTG_HCINTMSK_NAKM ;
+   tmp_reg = hc->HCCHAR & ~(USB_OTG_HCCHAR_EPNUM | USB_OTG_HCCHAR_EPDIR | USB_OTG_HCCHAR_EPTYP);
+   tmp_reg |= (((0 & 0x7FU)<< 11U) & USB_OTG_HCCHAR_EPNUM); // end point 0
+   tmp_reg |= (EP_TYPE_CTRL << 18U) & USB_OTG_HCCHAR_EPTYP; // type
+   hc->HCCHAR = tmp_reg;
 }
-USBH_URBStateTypeDef USBH_WaitPipe(uint8_t pipe) {
-	uint32_t timeout = usbh_timer+100;
-	while(pipe_status[pipe].status == USBH_PIPE_WORKING) {
-		uint32_t time = usbh_timer;
-			if(timeout < time) {
-			//	USBH_DbgLog("USBH_WaitEndpoint timeout pipe=%i %lu time=%lu", pipe,time, time-timeout);
-				HAL_HCD_HC_Halt(&hhcd,pipe);
-				HAL_Delay(1);
-				return USBH_URB_TIMEOUT;
-			}
+void USBH_SubmitSetup(USBH_PipeHandleTypeDef* hpipe, uint32_t* setup) {
+	PipeStatus* pipe = (PipeStatus* )hpipe;
+	__IO  USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+	uint8_t ch_num =  pipe->chan_num;
+	hhcd.hc[ch_num].data_pid = HC_PID_SETUP;
+	hhcd.hc[ch_num].ep_is_in = 0;
+	hhcd.hc[ch_num].ep_type  = EP_TYPE_CTRL;
+	hhcd.hc[ch_num].xfer_buff = (uint8_t)setup;
+	hhcd.hc[ch_num].xfer_len  = 8;
+	hhcd.hc[ch_num].urb_state = URB_IDLE;
+	hhcd.hc[ch_num].xfer_count = 0U;
+	hhcd.hc[ch_num].ch_num = ch_num;
+	hhcd.hc[ch_num].state = HC_IDLE;
+	USB_HC_StartXfer(hhcd.Instance, &(hhcd.hc[ch_num]), 0);
+}
+void USBH_SubmitControl(USBH_PipeHandleTypeDef* hpipe, uint32_t* data,uint16_t length){
+	PipeStatus* pipe = (PipeStatus* )hpipe;
+	__IO  USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+	uint8_t ch_num =  pipe->chan_num;
+	hhcd.hc[ch_num].data_pid = HC_PID_DATA1;
+	hhcd.hc[ch_num].ep_type  = EP_TYPE_CTRL;
+	hhcd.hc[ch_num].xfer_buff = (uint8_t)data;
+	hhcd.hc[ch_num].xfer_len  = length;
+	hhcd.hc[ch_num].urb_state = URB_IDLE;
+	hhcd.hc[ch_num].xfer_count = 0U;
+	hhcd.hc[ch_num].ch_num = ch_num;
+	hhcd.hc[ch_num].state = HC_IDLE;
+	if(hhcd.hc[ch_num].ep_is_in == 0) /*send data */
+	{
+	  if (length == 0U) hhcd.hc[ch_num].toggle_out = 1U;
+	  if (hhcd.hc[ch_num].toggle_out == 0U)
+		hhcd.hc[ch_num].data_pid = HC_PID_DATA0;
+	  else
+		hhcd.hc[ch_num].data_pid = HC_PID_DATA1;
+	}
+	USB_HC_StartXfer(hhcd.Instance, &(hhcd.hc[ch_num]), hhcd.Init.dma_enable);
+}
+void RawSendSetup(PipeStatus* pipe, uint32_t* setup) {
+	__IO  USB_OTG_HostChannelTypeDef * hc = pipe->hc;
+	uint8_t ch_num =  pipe->chan_num;
+	hc->HCTSIZ = USBH_HCTSIZ_XFRSIZ(8) | USBH_HCTSIZ_PKTCNT(1); // size of the packet setup
+	hc->HCINTMSK = USB_OTG_HCINTMSK_XFRCM | USB_OTG_HCINTMSK_STALLM | USB_OTG_HCINTMSK_TXERRM // interrupts
+			     | USB_OTG_HCINTMSK_DTERRM | USB_OTG_HCINTMSK_AHBERR | USB_OTG_HCINTMSK_NAKM ;
+
+	USB_HOST(hhcd.Instance)->HAINTMSK |= (1 << pipe->chan_num); // make sure we are unmasked
+	uint32_t tmp_reg = hc->HCCHAR & ~(USB_OTG_HCCHAR_CHDIS | USB_OTG_HCCHAR_ODDFRM | USB_OTG_HCCHAR_EPNUM | USB_OTG_HCCHAR_EPDIR | USB_OTG_HCCHAR_EPTYP);
+	tmp_reg |= USBH_HCCHAR_EPNUM(0); // end point 0
+	tmp_reg |= USBH_HCCHAR_TYPE(EP_TYPE_CTRL); // type
+	tmp_reg |= USB_OTG_HCCHAR_CHENA; /* Set host channel enable */
+	if(USB_HOST(hhcd.Instance)->HFNUM & 0x1U) tmp_reg |= USB_OTG_HCCHAR_ODDFRM; // odd frame
+	hc->HCCHAR = tmp_reg;
+	USB_DFIFO(hhcd.Instance, ch_num) = *((__packed uint32_t *)setup); setup++;
+	USB_DFIFO(hhcd.Instance, ch_num) = *((__packed uint32_t *)setup);
+}
+// returns pipe for debugging
+void USBH_WaitPipeBlocking(uint8_t pipe) {
+	USB_OTG_URBStateTypeDef status;
+	while(1){
+		status = USB_HOST_PipeState(pipe);
+		if(status == URB_IDLE) continue;
+		if(status == URB_DONE) return;
+		USBH_DbgLog("USBH_WaitPipeBlocking = %s", ENUM_TO_STRING(USB_OTG_URBStateTypeDef,status));
+		assert(0);
+	}
+}
+
+PipeStatus*  TestDescNonBlockingSetup(USBH_DeviceTypeDef* dev, USBH_ControlRequestTypeDef* ctrl) {
+	ctrl->status = USBH_PIPE_WORKING;
+	USB_HOST_InitEndpoint(1,EP_TYPE_CTRL, 0,0);
+	USB_SubmitSetup(1,(uint8_t*)ctrl);
+	USBH_WaitPipeBlocking(1);
+	USB_HOST_InitEndpoint(1,EP_TYPE_CTRL, 0,1);
+	USB_SubmitTrasfer(1, (uint8_t*)ctrl->Data, ctrl->Length);
+	USBH_WaitPipeBlocking(1);
+	USB_HOST_InitEndpoint(1,EP_TYPE_CTRL, 0,0);
+	USB_SubmitTrasfer(1, NULL, 0);
+	USBH_WaitPipeBlocking(1);
+	ctrl->status = USBH_PIPE_IDLE;
+#if 0
+	//PipeStatus* pipe = OpenPipe(dev);
+	assert(pipe);
+	USBH_DbgLog("TestDescNonBlockingSetup pipe=%i", pipe->chan_num);
+
+	USBH_PipeHandleTypeDef* hpipe=(USBH_PipeHandleTypeDef*)&(pipe->handle);
+	if(ctrl->Length>0) {
+		if(ctrl->RequestType  &  USB_SETUP_DEVICE_TO_HOST)
+			USBH_SetPipeCallback(hpipe, PipeCallbackRecvData,ctrl);
+		else
+			USBH_SetPipeCallback(hpipe, PipeCallbackSendData,ctrl);
+	}else {
+		if(ctrl->RequestType  &  USB_SETUP_DEVICE_TO_HOST)
+			USBH_SetPipeCallback(hpipe, PipeCallbackSendData,ctrl);
+		else
+			USBH_SetPipeCallback(hpipe, PipeCallbackRecvData,ctrl);
+	}
+	pipe->handle.status = USBH_PIPE_WORKING;
+	SetPipeEndpointConfig(pipe, 0x00,EP_TYPE_CTRL, 0);
+	PrintHCCHAR(pipe->hc->HCCHAR);
+	//RawSendSetup(pipe, (uint32_t*)ctrl);
+	USBH_SubmitSetup(pipe, (uint8_t*)ctrl);
+#endif
+	return NULL; ///pipe;
+}
+
+
+USBH_URBStateTypeDef USBH_WaitPipe(USBH_ControlRequestTypeDef* ctrl,uint8_t debug_pipe) {
+	HCD_URBStateTypeDef first = URB_IDLE;
+	USBH_DbgLog("USBH_WaitPipe");
+	while(ctrl->status == USBH_PIPE_WORKING){
+		HCD_URBStateTypeDef current= HAL_HCD_HC_GetURBState(&hhcd,debug_pipe);
+		if(first != current){
+
+			USBH_DbgLog("USBH_WaitPipe URB State Change %s -> %s", ENUM_TO_STRING(HCD_URBStateTypeDef, first),
+					 ENUM_TO_STRING(HCD_URBStateTypeDef, current)
+					);
+
+			first= current;
 		}
+	}
 		//USBH_DbgLog("USBH_WaitEndpoint pipe=%i state=%s", pipe, ENUM_TO_STRING(USBH_URBStateTypeDef, pipe_status[pipe].urb_state));
-		return (USBH_URBStateTypeDef)pipe_status[pipe].urb_state;;
+	return ctrl->status;
 }
 
-USBH_URBStateTypeDef  USBH_SubmitRequestBlocking(const USBH_EndpointTypeDef* ep, uint8_t* data, uint16_t length){
-	USBH_SubmitRequest(ep,data,length);
-	return USBH_WaitEndpoint(ep);
-}
-
-USBH_URBStateTypeDef  USBH_SubmitSetupBlocking(const USBH_EndpointTypeDef* ep, const USB_Setup_TypeDef* setup){
-	USBH_SubmitSetup(ep,setup);
-	return USBH_WaitEndpoint(ep);
-}
-
-USBH_URBStateTypeDef  _USBH_SubmitSetup(uint8_t pipe, const USB_Setup_TypeDef* setup) {
-	//USBH_ErrLog("_USBH_SubmitSetup");
-	StartPipe(pipe);
-	HAL_HCD_HC_SubmitRequest(&hhcd,  pipe,  0, EP_TYPE_CTRL ,0, (uint8_t*)setup, 8,0);
-	return USBH_WaitPipe(pipe);
-}
-USBH_URBStateTypeDef  _USBH_RecvControl(uint8_t pipe, uint8_t* data, uint16_t length) {
-	//USBH_ErrLog("_USBH_RecvControl");
-	StartPipe(pipe);
-	USBH_CtlReceiveData(data,length,pipe);
-	//HAL_HCD_HC_SubmitRequest(&hhcd,  pipe,  1, EP_TYPE_CTRL ,1, (uint8_t*)data, length,0);
-	return USBH_WaitPipe(pipe);
-}
-USBH_URBStateTypeDef  _USBH_SendControl(uint8_t pipe, uint8_t* data, uint16_t length) {
-	//USBH_ErrLog("_USBH_SendControl");
-	StartPipe(pipe);
-	USBH_CtlSendData(data,length,pipe,0);
-	//HAL_HCD_HC_SubmitRequest(&hhcd,  pipe,  0, EP_TYPE_CTRL ,1, (uint8_t*)data, length,0); // ping?
-	return USBH_WaitPipe(pipe);
-}
-
-static void SetVBUS(bool value) {
-	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_2, value ? GPIO_PIN_SET: GPIO_PIN_RESET);
-	  // HAL_Delay(200);
-}
 
 USBH_StatusTypeDef 			 USBH_Start(){
 	HAL_HCD_Start(&hhcd);
@@ -404,207 +464,143 @@ USBH_StatusTypeDef 			 USBH_Stop(){
 
 
 
-
-void PipeCallbackSendData(PipeStatus* status, uint8_t pipe);
-void PipeCallbackRecvData(PipeStatus* status, uint8_t pipe) ;
-void PipeCallbackRecvStatus(PipeStatus* status, uint8_t pipe);
-void PipeCallbackSendStatus(PipeStatus* status, uint8_t pipe);
-
-// WORKS! DO NOT OTUCH
-void PipeCallbackRecvData(PipeStatus* status, uint8_t pipe) {
-	USBH_DbgLog("PipeCallbackRecvData");
-	HCD_HCTypeDef* hc = &hhcd.hc[pipe];
-	HAL_HCD_HC_Init(&hhcd, pipe, hc->ep_num  & 0x80, hc->dev_addr, hc->speed, hc->ep_type,hc->max_packet);
-	StartPipeCallback(pipe, PipeCallbackSendStatus, NULL,0);
-	HAL_HCD_HC_SubmitRequest(&hhcd, pipe,1, hc->ep_type, 1, status->data, status->value,0);
-}
-void PipeCallbackSendData(PipeStatus* status, uint8_t pipe) {
-	USBH_DbgLog("PipeCallbackSendData");
-	HCD_HCTypeDef* hc = &hhcd.hc[pipe];
-	HAL_HCD_HC_Init(&hhcd, pipe, hc->ep_num, hc->dev_addr, hc->speed, hc->ep_type,hc->max_packet);
-	StartPipeCallback(pipe, PipeCallbackRecvStatus, NULL,0);
-	HAL_HCD_HC_SubmitRequest(&hhcd, pipe,0, hc->ep_type, 1, status->data, status->value,0);
-}
-void PipeCallbackRecvStatus(PipeStatus* status, uint8_t pipe) {
-	USBH_DbgLog("PipeCallbackRecvStatus");
-	UNUSED(status);
-	HCD_HCTypeDef* hc = &hhcd.hc[pipe];
-	HAL_HCD_HC_Init(&hhcd, pipe, hc->ep_num  & 0x80, hc->dev_addr, hc->speed, hc->ep_type,hc->max_packet);
-	StartPipe(pipe);
-	HAL_HCD_HC_SubmitRequest(&hhcd, pipe,1, hc->ep_type, 1, NULL, 0 ,0);
-}
-void PipeCallbackSendStatus(PipeStatus* status, uint8_t pipe) {
-	USBH_DbgLog("PipeCallbackSendStatus");
-	UNUSED(status);
-	HCD_HCTypeDef* hc = &hhcd.hc[pipe];
-	HAL_HCD_HC_Init(&hhcd, pipe, hc->ep_num, hc->dev_addr, hc->speed, hc->ep_type,hc->max_packet);
-	StartPipe(pipe);
-	HAL_HCD_HC_SubmitRequest(&hhcd, pipe,0, hc->ep_type, 1,  NULL, 0 ,0);
-}
-
-void TestDescBlockingSetup(uint8_t pipe, uint8_t addr, uint8_t pkt_size, USB_Setup_TypeDef* setup, void* data)
-{
-	StopPipe(pipe);
-	if(setup->b.wLength.w>0) {
-		if(setup->b.bmRequestType  &  USB_SETUP_DEVICE_TO_HOST)
-			StartPipeCallback(pipe, PipeCallbackRecvData, data,setup->b.wLength.w);
-		else
-			StartPipeCallback(pipe, PipeCallbackSendData, data,setup->b.wLength.w);
-	}else {
-		if(setup->b.bmRequestType  &  USB_SETUP_DEVICE_TO_HOST)
-			StartPipeCallback(pipe, PipeCallbackSendData, NULL,0);
-		else
-			StartPipeCallback(pipe, PipeCallbackRecvData,  NULL,0);
+USBH_URBStateTypeDef TestGetDesc3(USBH_DeviceTypeDef* dev, USB_DEVICE_DESCRIPTOR* desc, uint8_t length) {
+	USBH_ControlRequestTypeDef ctrl;
+	ctrl.RequestType 	= USB_SETUP_DEVICE_TO_HOST | USB_SETUP_RECIPIENT_DEVICE | USB_SETUP_TYPE_STANDARD;
+	ctrl.Request 		= USB_REQUEST_GET_DESCRIPTOR;
+	ctrl.Value 			= ((USB_DESCRIPTOR_DEVICE << 8) & 0xFF00);// USB_DESCRIPTOR_DEVICE;
+	ctrl.Index  		= 0;
+	ctrl.Length  		= length;// sizeof(USB_DEVICE_DESCRIPTOR);
+	ctrl.Data = (uint8_t*)desc;
+	USB_HOST_SubmitControlRequest(1,&ctrl);
+	while(1){
+		switch(ctrl.status){
+		case USB_HOST_WORKING: continue;
+		case USB_HOST_ERROR:
+			assert(0);
+			break;
+		}
+		break;
 	}
-	USBH_DbgLog("Setup Packet");
-	HAL_HCD_HC_SubmitRequest(&hhcd, pipe,0, EP_TYPE_CTRL, 0, (uint8_t*)setup->d8, 8,0);
+	//while(ctrl.status == USB_HOST_WORKING);
+	//assert(ctrl.status == USB_HOST_COMPLETE);
+	//PipeStatus* pipe =
+	//TestDescNonBlockingSetup(dev,&ctrl);
+	return USBH_URB_DONE;
 }
 
-USBH_URBStateTypeDef TestGetDesc(uint8_t pipe, uint8_t addr, uint8_t pkt_size, USB_DEVICE_DESCRIPTOR* desc, uint8_t length) {
-	USB_Setup_TypeDef setup;
-	setup.b.bmRequestType 	= USB_SETUP_DEVICE_TO_HOST | USB_SETUP_RECIPIENT_DEVICE | USB_SETUP_TYPE_STANDARD;
-	setup.b.bRequest 		= USB_REQUEST_GET_DESCRIPTOR;
-	setup.b.wValue.w  		=   ((USB_DESCRIPTOR_DEVICE << 8) & 0xFF00);// USB_DESCRIPTOR_DEVICE;
-	setup.b.wIndex.w  		= 0;
-	setup.b.wLength.w  		= length;// sizeof(USB_DEVICE_DESCRIPTOR);
-	TestDescBlockingSetup(pipe, addr, pkt_size, &setup, desc);
-	return USBH_WaitPipe(pipe);
-}
-
-
-void TestGetDesc3(uint8_t addr, uint8_t pkt_size, USB_DEVICE_DESCRIPTOR* desc, uint8_t length) {
-	USB_Setup_TypeDef setup;
-	setup.b.bmRequestType 	= USB_SETUP_DEVICE_TO_HOST | USB_SETUP_RECIPIENT_DEVICE | USB_SETUP_TYPE_STANDARD;
-	setup.b.bRequest 		= USB_REQUEST_GET_DESCRIPTOR;
-	setup.b.wValue.w  		=   ((USB_DESCRIPTOR_DEVICE << 8) & 0xFF00);// USB_DESCRIPTOR_DEVICE;
-	setup.b.wIndex.w  		= 0;
-	setup.b.wLength.w  		= length;// sizeof(USB_DEVICE_DESCRIPTOR);
-	HAL_HCD_HC_Init(&hhcd, 1, 0x00, addr, port_speed, EP_TYPE_CTRL, pkt_size); // OUT
-
-	assert(_USBH_SubmitSetup(1,&setup)==USBH_URB_DONE);
-	HAL_HCD_HC_Init(&hhcd, 1, 0x80, addr, port_speed, EP_TYPE_CTRL, pkt_size); // IN
-	//HAL_HCD_HC_Init(&hhcd, 1, 0x00, addr, port_speed, EP_TYPE_CTRL, pkt_size); // IN
-	assert(_USBH_RecvControl(1, (uint8_t*)desc, length)==USBH_URB_DONE);
-	HAL_HCD_HC_Init(&hhcd, 1, 0x00, addr, port_speed, EP_TYPE_CTRL, pkt_size); // OUT
-	assert(_USBH_SendControl(1, NULL,0)==USBH_URB_DONE);
-}
 struct timeval t1, t2, t3,t4;
 double elapsedTime;
+#ifndef timersub
+#define	timersub(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec < 0) {				\
+			(vvp)->tv_sec--;				\
+			(vvp)->tv_usec += 1000000;			\
+		}							\
+	} while (0)
+#define	timeradd(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec >= 1000000) {			\
+			(vvp)->tv_sec++;				\
+			(vvp)->tv_usec -= 1000000;			\
+		}							\
+	} while (0)
+#define	timerdiv(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec / (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec >= 1000000) {			\
+			(vvp)->tv_sec++;				\
+			(vvp)->tv_usec -= 1000000;			\
+		}							\
+	} while (0)
+#endif
+
+
 void PrintTime(const char* message,struct timeval* tv){
 	USBH_DbgLog("%s diff=%lu.%06lu",
 				message,tv->tv_sec, tv->tv_usec);
 }
+void PrintFloatTime(const char* message,float f){
+	struct timeval tv;
+	tv.tv_sec = (time_t)f;
+	tv.tv_usec = (long)((f - (float)tv.tv_sec)*1000000);
+	PrintTime(message,&tv);
+}
 USB_DEVICE_DESCRIPTOR root_dev_desc;
-void TestBlocking() {
-	gettimeofday(&t1, NULL);
-	//const USBH_CtrlType2TypeDef* ctrl = USBH_OpenControl(0, 8);
-	//HAL_HCD_HC_Init(&hhcd, 1, 0x00, 0, port_speed, EP_TYPE_CTRL, 8); // OUT
-	//HAL_HCD_HC_Init(&hhcd, 2, 0x80, 0, port_speed, EP_TYPE_CTRL, 8); // IN
 
-	assert(TestGetDesc(1,0,8,&root_dev_desc,8)==USBH_URB_DONE);
-	//HAL_HCD_HC_Init(&hhcd, 1, 0x00, 0, port_speed, EP_TYPE_CTRL, root_dev_desc.bMaxPacketSize0); // OUT
-	//HAL_HCD_HC_Init(&hhcd, 2, 0x80, 0, port_speed, EP_TYPE_CTRL, root_dev_desc.bMaxPacketSize0); // IN
-	assert(TestGetDesc(1,0,root_dev_desc.bMaxPacketSize0,&root_dev_desc,18)==USBH_URB_DONE);
-	gettimeofday(&t3, NULL);
-	timersub(&t3,&t1, &t4);
-	PrintTime("Final Time", &t4);
+float TestDevRetreavalSpeed(USBH_DeviceTypeDef* dev) {
+	struct timeval t1, t2, t3;
+	gettimeofday(&t1, NULL);
+	assert(TestGetDesc3(dev,&root_dev_desc,18)==USBH_URB_DONE);
+	gettimeofday(&t2, NULL);
+	timersub(&t2,&t1, &t3);
+	return ((float)t3.tv_sec  + (((float)t3.tv_usec)/1000000.0f));
+}
+void BenchmarkLoop(USBH_DeviceTypeDef* dev, uint32_t count) {
+	float sum=0.0f,sumsq=0.0f;
+	for(uint32_t i=0;i < count; i++) {
+		float time = TestDevRetreavalSpeed(dev);
+		sum+=time;
+		sumsq+=time*time;
+	}
+	float var = sumsq - ((sum*sum)/(float)count)/((float)(count -1));
+    PrintFloatTime("BenchmarkLoop Average",sum/(float)count);
+	PrintFloatTime("BenchmarkLoop Varanence",var);
+}
+void TestBlocking() {
+	USBH_DeviceTypeDef test_dev;
+	test_dev.Address = 0;
+	test_dev.MaxPacketSize = 8;
+	test_dev.Speed = port_speed;
+	USB_HOST_SetPipeMaxPacketSize(1, 8) ;
+	USB_HOST_SetPipeDevAddress(1, 0);
+	//const USBH_CtrlType2TypeDef* ctrl = USBH_OpenControl(0, 8);
+	assert(TestGetDesc3(&test_dev,&root_dev_desc,8)==USBH_URB_DONE);
+	assert(test_dev.MaxPacketSize!=0);
+		USBH_DbgLog("Packet size %i",  root_dev_desc.bMaxPacketSize0);
+	test_dev.MaxPacketSize = root_dev_desc.bMaxPacketSize0;
+	USB_HOST_SetPipeMaxPacketSize(1, root_dev_desc.bMaxPacketSize0) ;
+
+	BenchmarkLoop(&test_dev,20);
 	PRINT_STRUCT(USB_DEVICE_DESCRIPTOR,&root_dev_desc);
 }
 void USBH_SetUserData(void* userdata) { hhcd.pData = userdata; }
 
 
-
 bool enumerate_root_device = false;
 USBH_URBStateTypeDef  		 USBH_Poll() {
-	if(port_state == HOST_PORT_CONNECTED){
-		if(enumerate_root_device){
-			usbh_timer = 0;
-			TestBlocking(0,8);
-			enumerate_root_device = false;
-		}
-
-		//TestGetDeviceInfo() ;
+	if(enumerate_root_device){
+			//usbh_timer = 0;
+		TestBlocking(0,8);
+		enumerate_root_device = false;
 	}
 	return USBH_OK;
 }
-
-__attribute__((weak)) void USBH_PortConnectCallback(void* userdata)
-{
-	UNUSED(userdata);
-	USBH_DbgLog("Port Connected!");
-	 enumerate_root_device = true;
+void USB_HOST_Disconnect() {
+	enumerate_root_device = false;
 }
-__attribute__((weak))  void USBH_PortDisconnectCallback(void* userdata)
-{
-	UNUSED(userdata);
-	USBH_DbgLog("Port Disconnected!");
+void USB_HOST_Connect() {
+	USBH_DbgLog("USB_HOST_Connect");
+	enumerate_root_device = true;
 }
-
-void HAL_HCD_SOF_Callback(HCD_HandleTypeDef *hhcd){
-	UNUSED(hhcd);
-	usbh_timer++;
-}
-// state machine used just for making solid connections
-
-
-
-static void USBH_ResetPort(void * data) {
-	port_state = (PORT_StateTypeDef)data;
-	HAL_HCD_ResetPort(&hhcd);
-}
-
-static void USBH_DisconnectTimerCallback(void *data) {
-	switch(port_state){
-	case HOST_PORT_DISCONNECTING_PORT_OFF:
-		HAL_HCD_Start(&hhcd);
-		SetVBUS(true);
-		port_state = HOST_PORT_DISCONNECTING_PORT_ON;
-		OneShotTimer(200, USBH_DisconnectTimerCallback, NULL); // reset the port in 200 ms
-		break;
-	case HOST_PORT_DISCONNECTING_PORT_ON:
-		port_state = HOST_PORT_DISCONNECTED;
-		break;
-	default: break;
-	}
-}
-
-
-void HAL_HCD_Connect_Callback(HCD_HandleTypeDef *hhcd){
-	switch(port_state) {
-	case HOST_PORT_DISCONNECTED:
-		OneShotTimer(200, USBH_ResetPort, (void*)HOST_PORT_WAIT_FOR_ATTACHMENT); // reset the port in 200 ms
-		break;
-	case HOST_PORT_WAIT_FOR_ATTACHMENT:
-		port_state = HOST_PORT_CONNECTED;
-		port_speed = USBH_GetSpeed();
-		USBH_PortConnectCallback(hhcd->pData); // callback the connection
-		break;
-	default: break;
-	}
-}
-void HAL_HCD_Disconnect_Callback(HCD_HandleTypeDef *hhcd){
-	port_state = HOST_PORT_DISCONNECTING_PORT_OFF;
-	// clear and flush all the pipes?
-	HAL_HCD_Stop(hhcd);
-	SetVBUS(false);
-	USBH_PortDisconnectCallback(hhcd->pData);
-	OneShotTimer(200, USBH_DisconnectTimerCallback, NULL); // reset the port in 200 ms
-}
-
 
 void HAL_HCD_HC_NotifyURBChange_Callback(HCD_HandleTypeDef *hhcd, uint8_t chnum, HCD_URBStateTypeDef urb_state){
 	USBH_URBStateTypeDef usbh_state = (USBH_URBStateTypeDef)urb_state;
-	PipeStatus* ps = &pipe_status[chnum];
-	if(ps->status == USBH_PIPE_WORKING){
-		if(usbh_state == USBH_URB_NOTREADY) return;
-		ps->status = USBH_PIPE_IDLE;
-		ps->urb_state= (USBH_URBStateTypeDef)urb_state;
-		ps->hc_state=  hhcd->hc[chnum].state;
-		if(ps->Callback) ps->Callback(ps,chnum);
-		//USBH_DbgLog("NotifyURBChange pipe=%i %s %s", chnum,ENUM_TO_STRING(USB_OTG_HCStateTypeDef, ps->hc_state),ENUM_TO_STRING(USBH_URBStateTypeDef, ps->urb_state));
+	PipeStatus* ps = &pipe_status_list[chnum];
+	//if(urb_state != USBH_URB_DONE)
+		USBH_DbgLog("NotifyURBChange pipe=%i %s %s", chnum,ENUM_TO_STRING(USB_OTG_HCStateTypeDef, hhcd->hc[chnum].state),ENUM_TO_STRING(USBH_URBStateTypeDef,usbh_state));
+	if(usbh_state == USBH_URB_IDLE) return;
+	if(ps->handle.status == USBH_PIPE_WORKING){
+		ps->handle.urb_state= (USBH_URBStateTypeDef)urb_state;
+
+		if(ps->Callback) ps->Callback(ps->owner, (USBH_PipeHandleTypeDef*)ps, ps->udata);
+		else ps->handle.hc_state=  USBH_PIPE_IDLE;
 	}
-
-
-
 }
 

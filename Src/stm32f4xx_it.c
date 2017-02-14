@@ -42,6 +42,13 @@ extern SAI_HandleTypeDef haudio_out_sai;
 /* I2S handler declared in "stm32469i_discovery_audio.c" file */
 extern I2S_HandleTypeDef haudio_in_i2s;
 
+extern DMA_HandleTypeDef hdma_usart3_tx;
+
+void DMA1_Stream3_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart3_tx);
+}
+
 void AUDIO_SAIx_DMAx_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(haudio_out_sai.hdmatx);
@@ -85,43 +92,7 @@ void EXTI2_IRQHandler(void)
 /**
 * @brief This function handles System service call via SWI instruction.
 */
-void SVC_Handler(void)
-{
-  /* USER CODE BEGIN SVCall_IRQn 0 */
 
-  /* USER CODE END SVCall_IRQn 0 */
-  /* USER CODE BEGIN SVCall_IRQn 1 */
-
-  /* USER CODE END SVCall_IRQn 1 */
-}
-
-/**
-* @brief This function handles Pendable request for system service.
-*/
-void PendSV_Handler(void)
-{
-  /* USER CODE BEGIN PendSV_IRQn 0 */
-
-  /* USER CODE END PendSV_IRQn 0 */
-  /* USER CODE BEGIN PendSV_IRQn 1 */
-
-  /* USER CODE END PendSV_IRQn 1 */
-}
-
-/**
-* @brief This function handles System tick timer.
-*/
-void SysTick_Handler(void)
-{
-  /* USER CODE BEGIN SysTick_IRQn 0 */
-
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  HAL_SYSTICK_IRQHandler();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-
-  /* USER CODE END SysTick_IRQn 1 */
-}
 
 /******************************************************************************/
 /* STM32F4xx Peripheral Interrupt Handlers                                    */
@@ -197,14 +168,10 @@ void DMA2D_IRQHandler(void) {
 	HAL_DMA2D_IRQHandler(&hdma2d_eval);
 }
 void OTG_HS_IRQHandler(){
+	assert("OTG_HS_IRQHandler"==0);
 	HAL_HCD_IRQHandler(&hhcd);
 }
-void OTG_FS_IRQHandler(void)
-{
-  HAL_HCD_IRQHandler(&hhcd);
-}
-void OTG_FS_WKUP_IRQHandler(){
-	 HAL_HCD_IRQHandler(&hhcd);
-}
+
+
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

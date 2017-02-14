@@ -70,10 +70,7 @@ extern void Error_Handler(void);
 void MX_USART3_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void uart_return_after_newline(bool enable);
-void uart_putc(char c); /// blocking instant put c
-void uart_puts(const char* str); // blocking, instant put string
-void uart_write(const uint8_t* data, size_t len); // blocking instant put data
+
 typedef enum {
 	UART_MODE_NONE= 0,
 	UART_MODE_RIGHT_JUSTIFY=1,
@@ -85,7 +82,15 @@ typedef enum {
 } t_uart_mode;
 
 void uart_puti(unsigned long value, int width, t_uart_mode mode);
-void uart_print(const char* fmt,...);
+
+void uart_return_after_newline(bool enable);
+void uart_putc(char c); /// blocking instant put c
+void uart_puts(const char* str); // blocking, instant put string
+void uart_write(const uint8_t* data, size_t len); // blocking instant put data
+
+void uart_raw_write(const uint8_t* data, size_t len); // blocking instant put data
+void uart_raw_print(const char* fmt,...);
+void uart_raw_write(const uint8_t* data, size_t len); // blocking instant put data
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

@@ -394,6 +394,7 @@ typedef struct
 
 #define USBx_HOST       ((USB_OTG_HostTypeDef *)((uint32_t )USBx + USB_OTG_HOST_BASE))
 #define USBx_HC(i)      ((USB_OTG_HostChannelTypeDef *)((uint32_t)USBx + USB_OTG_HOST_CHANNEL_BASE + (i)*USB_OTG_HOST_CHANNEL_SIZE))
+
 /**
   * @}
   */
@@ -431,7 +432,13 @@ HAL_StatusTypeDef USB_ActivateSetup (USB_OTG_GlobalTypeDef *USBx);
 HAL_StatusTypeDef USB_EP0_OutStart(USB_OTG_GlobalTypeDef *USBx, uint8_t dma, uint8_t *psetup);
 uint8_t           USB_GetDevSpeed(USB_OTG_GlobalTypeDef *USBx);
 uint32_t          USB_GetMode(USB_OTG_GlobalTypeDef *USBx);
+#define READ_INTERRUPTS_AS_MACRO
+#ifdef READ_INTERRUPTS_AS_MACRO
+#define USB_ReadInterrupts(USBxx)  ((uint32_t)((USBxx)->GINTSTS & (USBxx)->GINTMSK))
+#else
 uint32_t          USB_ReadInterrupts (USB_OTG_GlobalTypeDef *USBx);
+#endif
+
 uint32_t          USB_ReadDevAllOutEpInterrupt (USB_OTG_GlobalTypeDef *USBx);
 uint32_t          USB_ReadDevOutEPInterrupt (USB_OTG_GlobalTypeDef *USBx , uint8_t epnum);
 uint32_t          USB_ReadDevAllInEpInterrupt (USB_OTG_GlobalTypeDef *USBx);
@@ -457,6 +464,17 @@ HAL_StatusTypeDef USB_HC_Halt(USB_OTG_GlobalTypeDef *USBx , uint8_t hc_num);
 HAL_StatusTypeDef USB_DoPing(USB_OTG_GlobalTypeDef *USBx , uint8_t ch_num);
 HAL_StatusTypeDef USB_StopHost(USB_OTG_GlobalTypeDef *USBx);
 
+// so we don't have to run the USB_HC_halt within an intterupt
+// I mean seriously, we are goign to be waiting for the interrupt after
+
+#define USB_HOST(USB) ((USB_OTG_HostTypeDef *)((uint32_t )(USB) + USB_OTG_HOST_BASE))
+#define USB_DFIFO(USB,i)   *(__IO uint32_t *)((uint32_t)(USB) + USB_OTG_FIFO_BASE + (i) * USB_OTG_FIFO_SIZE)
+
+#define USB_HC(USB, i) ((USB_OTG_HostChannelTypeDef *)((uint32_t)(USB) + USB_OTG_HOST_CHANNEL_BASE + (i)*USB_OTG_HOST_CHANNEL_SIZE))
+#define USB_HC_UnmaskAndHalt(USB,CHANNEL) do {\
+		USB_HC(USB,chnum)->HCINTMSK |= USB_OTG_HCINTMSK_CHHM;\
+		USB_HC(USB,chnum)->HCCHAR |= USB_OTG_HCCHAR_CHDIS;\
+		USB_HC(USB,chnum)->HCCHAR |= USB_OTG_HCCHAR_CHENA; } while(0)\
 /**
   * @}
   */ 

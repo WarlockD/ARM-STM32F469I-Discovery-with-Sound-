@@ -205,7 +205,7 @@ int _write(int file, char *ptr, int len)
 int _read(int file, char *ptr, int len)
 {
 	if(file == 0) { // standard input
-		if(HAL_UART_Receive(&huart3, (uint8_t*)ptr,len,100) == HAL_OK) return len;
+		//if(HAL_UART_Receive(&huart3, (uint8_t*)ptr,len,100) == HAL_OK) return len;
 	}
 
    return len;
