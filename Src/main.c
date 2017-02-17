@@ -405,29 +405,7 @@ void SystemClock_Config_Old(void)
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
-void DebugMessage(LogLevelTypeDef level, const char* message){
-	static const char* level_to_string[] = {
-		ANSI_COLOR_FORGROUND_RED "ERROR" ANSI_COLOR_RESET ": ",
-		ANSI_COLOR_FORGROUND_YELLOW "WARN" ANSI_COLOR_RESET ": ",
-		ANSI_COLOR_FORGROUND_WHITE "USER " ANSI_COLOR_RESET ": ",
-		ANSI_COLOR_FORGROUND_WHITE "DEBUG" ANSI_COLOR_RESET ": ",
-	};
-	struct timeval t1;
-	char buf[128];
-	gettimeofday(&t1, NULL);
-	int len=sprintf(buf,"[%lu.%06lu] %s: %s\r\n", t1.tv_sec ,t1.tv_usec ,level_to_string[level],message);
-	buf[127]=0; // sanity
-	uart_write((uint8_t*)buf,len);
-}
-void PrintDebugMessage(LogLevelTypeDef level, const char* fmt, ...){
-	char buf[128];
-	va_list va;
-	va_start(va,fmt);
-	vsprintf(buf,fmt,va);
-	va_end(va);
-	buf[127]=0;
-	DebugMessage(level,buf);
-}
+
 
 void DebugPrintBufferByte(uint8_t* data, size_t length) {
 		while(length){

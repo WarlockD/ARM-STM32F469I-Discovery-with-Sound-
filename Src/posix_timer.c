@@ -16,7 +16,10 @@
 #define TIMx_IRQn                      TIM2_IRQn
 #define TIMx_IRQHandler                TIM2_IRQHandler
 
-
+uint32_t                 uwIncrementState = 0;
+static TIM_HandleTypeDef ClockHandle;
+static volatile struct timeval tv_time = { 0, 0};
+static volatile bool hal_timer_enable = true;
 #if 0
 int getitimer(int which, struct itimerval *curr_value){
 	if(!curr_value) {
@@ -118,11 +121,7 @@ int _EXFUN(gettimeofday, (struct timeval *__restrict __p,
 
 
 
-TIM_HandleTypeDef        htim3;
-uint32_t                 uwIncrementState = 0;
-static TIM_HandleTypeDef ClockHandle;
-static volatile struct timeval tv_time = { 0, 0};
-static volatile bool hal_timer_enable = true;
+
 void TIMx_IRQHandler(void) {
 	if((TIMx->SR & TIM_SR_CC1IF) && (TIMx->DIER & TIM_DIER_CC1IE)){
 		if(hal_timer_enable) HAL_IncTick();
@@ -181,7 +180,7 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 	TIMx->CCER |= TIM_CCER_CC1E;
 	TIMx->DIER |= TIM_DIER_CC1IE;
 	TIMx->CCR1 = 999;
-	assert (HAL_TIM_Base_Start_IT(&htim3)== HAL_OK);
+	assert (HAL_TIM_Base_Start_IT(&ClockHandle)== HAL_OK);
 	__HAL_TIM_ENABLE_IT(&ClockHandle, TIM_IT_UPDATE);
 	__HAL_TIM_ENABLE(&ClockHandle);
 	//assert(HAL_TIM_Base_Start_IT(&ClockHandle) == HAL_OK);
@@ -229,61 +228,3 @@ bool CreateTask(void(*func)()) {
      while(1) ;
 }
 
-void SVC_Handler(void)
-{
-	assert(0);
-}
-#if 0
-void PendSV_Handler(void)
-{
-
-}
-#endif
-void PendSV_Handler(void) { // Context switching code
-#if 0
-// Simple version - assume No floating point support
-// -------------------------
-// Save current context
-	__asm (
-
-
-  MRS R0, PSP // Get current process stack pointer value
-  STMDB R0!,{R4-R11} // Save R4 to R11 in task stack (8 regs)
-  LDR R1,=__cpp(&curr_task)
-  LDR R2,[R1] // Get current task ID
-  LDR R3,=__cpp(&PSP_array)
-  STR R0,[R3, R2, LSL #2] // Save PSP value into PSP_array
-  // -------------------------
-  // Load next context
-  LDR R4,=__cpp(&next_task)
-  LDR R4,[R4] // Get next task ID
-  STR R4,[R1] // Set curr_task = next_task
-  LDR R0,[R3, R4, LSL #2] // Load PSP value from PSP_array
-  LDMIA R0!,{R4-R11} // Load R4 to R11 from task   stack (8 regs)
-  MSR PSP, R0 // Set PSP to next task
-  BX LR // Return
-  ALIGN 4
-	);
-#endif
-}
-
-
-void SysTick_Handler(void)
-{
-  HAL_SYSTICK_IRQHandler();
-#if 0
-      switch(curr_task) {
-      case(0): next_task=1; break;
-      case(1): next_task=2; break;
-      case(2): next_task=3; break;
-      case(3): next_task=0; break;
-      default: next_task=0;
-      stop_cpu;
-      break; // Should not be here
-      }
-      if (curr_task!=next_task){ // Context switching needed
-      SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk; // Set PendSV to pending
-      }
-      return;
-#endif
-}

@@ -43,6 +43,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <sys/queue.h>
 #include "usart.h"
 #include "stm32469i_discovery.h"
 #include "gpio.h"
@@ -51,10 +52,12 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdbool.h>
+
 #define LINE_SIZE (256)
 #define BUFFER_COUNT 16
-#define DMA_QUEUE 2048
+#define DMA_BUFFER 2048
 
+#if 0
 #define RINGFIFO_SIZE (1024)              /* serial buffer in bytes (power 2)   */
 #define RINGFIFO_MASK (RINGFIFO_SIZE-1ul) /* buffer size mask                   */
 
@@ -70,100 +73,137 @@
 
 /* buffer type                                                                */
 typedef struct __t_ring_fifo {
-	struct __t_ring_fifo* next;
+	SIMPLEQ_ENTRY(__t_ring_fifo) tx_fifo;
 	__IO uint16_t wrIdx;
 	__IO uint16_t rdIdx;
-
+	uint8_t data[RINGFIFO_SIZE];
 } t_ring_fifo;
-typedef struct __line_buffer{
-	struct __line_buffer* next;
-	uint16_t length;
-	uint8_t data[LINE_SIZE];
-}t_line_buffer;
-typedef struct __t_line_buffer_fifo {
-	t_line_buffer* front;
-	t_line_buffer* back;
-}_t_line_buffer_fifo;
+#endif
+
+// line buffer
+#define FREE_BUFFER -1
+typedef struct __t_linebuffer {
+	SIMPLEQ_ENTRY(__t_linebuffer) tx_fifo;
+	uint32_t length;
+	uint32_t lock;
+	char data[LINE_SIZE];
+} t_linebuffer;
 
 static bool uart_init = false;
-static t_line_buffer buffers[BUFFER_COUNT];
-static t_line_buffer* irq_lines[256];
-static _t_line_buffer_fifo tx_fifo = { NULL, NULL };
+static t_linebuffer buffers[BUFFER_COUNT];
+static char dma_buffer[DMA_BUFFER];
+static t_linebuffer* irq_lines[256];
+SIMPLEQ_HEAD(t_linebuffer_queue, __t_linebuffer) tx_fifo = SIMPLEQ_HEAD_INITIALIZER(tx_fifo);
+
 static bool uart_trasmiting = false;
-static uint8_t dma_buffer[DMA_QUEUE];
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_tx;
 
 #define IS_NEWLINECHAR(N) ((N)=='\r' || (N)=='\n')
 //while(hdma_usart3_tx.Instance->NDTR>0);
+UART_HandleTypeDef *s_chuart;
+void uart_set_console_out(UART_HandleTypeDef* huart){
+	s_chuart = huart;
+	SIMPLEQ_INIT(&tx_fifo);
+	memset(irq_lines,0,sizeof(t_linebuffer*)*256);
+	memset(buffers,0,sizeof(t_linebuffer)*BUFFER_COUNT);
+}
 
-void fifo_add_to_tx(uint8_t irq){
-	__disable_irq(); // got to do this
-	assert(irq_lines[irq]);
-	if(tx_fifo.front==NULL)  tx_fifo.front=irq_lines[irq];
-	else tx_fifo.back->next=irq_lines[irq];
-	tx_fifo.back=irq_lines[irq];
-	irq_lines[irq] = NULL;
-	__enable_irq(); // got to do this
+static inline bool CompareAndStore(uint32_t *dest, uint32_t new_value, uint32_t old_value)
+{
+  do
+  {
+    if (__LDREXW(dest) != old_value) return true; // Failure
+  } while(__STREXW(new_value, dest));
+  return false;
 }
-t_line_buffer* get_buffer(uint8_t irq){
+uint32_t atomic_test_and_set(uint32_t* dest) {
+	uint32_t old = __LDREXW(dest);
+	while(__STREXW(1, dest));
+	return old;
+}
+void atomic_clear(uint32_t* dest) {
+	do{
+		if(__LDREXW(dest) == 0) break;
+	} while (__STREXW(0, dest));
+}
+t_linebuffer* get_buffer(uint8_t irq){
 	while(irq_lines[irq] == NULL) {
-		__disable_irq(); // got to do this
 		for(uint16_t i=0; i < BUFFER_COUNT; i++) {
-			if(buffers[i].length ==0){
-				t_line_buffer* ret = irq_lines[irq] = &buffers[i];
-				__enable_irq(); // got to do this
-				return ret;
+			t_linebuffer* q = &buffers[i];
+			if(atomic_test_and_set(&q->lock)==0){
+				irq_lines[irq] = q;
+				q->length=0; // just in case
+				__enable_irq(); // got to do this..mabye?
+				return q;
 			}
+			//__enable_irq(); // got to do this..mabye?
 		}
-		__enable_irq(); // got to do this
-		HAL_Delay(1);
+		HAL_Delay(1); // delay for a free buffer
 	}
-	return irq_lines[irq];
+	return irq_lines[irq] ;
 }
+void fifo_add_to_tx(uint8_t irq){
+	t_linebuffer* q = irq_lines[irq];
+	irq_lines[irq]=NULL;
+	__disable_irq(); // got to do this..mabye?
+	SIMPLEQ_INSERT_TAIL(&tx_fifo,q, tx_fifo);
+	__enable_irq();
+}
+
+
+void uart_putraw(uint8_t c) {
+	if(!uart_init) return;
+	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TXE))); // trasmit empty
+	s_chuart->Instance->DR = c;
+}
+void direct_uart_puts(const char* str) {
+	if(!uart_init) return;
+	while(*str)uart_putraw(*str++);
+	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
+}
+
+void uart_raw_write(const uint8_t* data, size_t len){
+	while(len--) uart_putc(*data++);
+}
+
+
 void fifo_fill_dma_buffer() {
 	if(!uart_init) return;
-
-	//__disable_irq(); // got to do this, I hope this is fast
+	//__disable_irq();
 	if(!uart_trasmiting) {// return if the dma is running
-	//	__disable_irq(); // got to do this
-
-		if(tx_fifo.front){
-			t_line_buffer* buf =tx_fifo.front;
-			tx_fifo.front = buf->next;
-			uart_trasmiting= true;
-			uart_raw_print("fifo_fill_dma_buffer %s\r\n",buf->data);
-
-			//HAL_UART_Transmit_IT(&huart3,buf->data, buf->length);
-			HAL_UART_Transmit_DMA(&huart3,buf->data, buf->length);
-			buf->length=0; // free the buffer
-			buf->next = NULL;
+		size_t dma_length=0;
+		t_linebuffer* q;
+		while((q = SIMPLEQ_FIRST(&tx_fifo))) {
+			if((dma_length + q->length) > DMA_BUFFER) break;
+			memcpy(&dma_buffer[dma_length],q->data,q->length);
+			dma_length+= q->length;
+			SIMPLEQ_REMOVE_HEAD(&tx_fifo, tx_fifo);
+			q->length = 0;
+			atomic_clear(&q->lock);
 		}
-	//	__enable_irq(); // got to do this
+		if(dma_length>0) HAL_UART_Transmit_DMA(&huart3,(uint8_t*)dma_buffer, dma_length);
 	}
+	//__enable_irq();
 }
-void fifo_putc(char c) {
-	if(c == 0 || c == '\r') return; // ignore 0 and \r
-	uint8_t irq = __get_IPSR() & 0xFF;
-	t_line_buffer*  buf = get_buffer(irq);
-	buf->data[buf->length++] = c;
-	if(c == '\n' || buf->length == LINE_SIZE) fifo_add_to_tx(irq);
-}
+
 
 void fifo_write(const uint8_t* data, size_t length) {
 	uint8_t irq = __get_IPSR() & 0xFF;
 	while(length){
-		t_line_buffer*  buf = get_buffer(irq);
-		while(length && buf->length < LINE_SIZE) {
+		t_linebuffer*  buf = get_buffer(irq);
+		while(length && buf->length < (LINE_SIZE-3)) {  // account for \r\n\0
 			uint8_t c = *data++;
-			if(c == 0 || c == '\r') continue;
-			buf->data[buf->length++] = c;
-			if(c == 0 || c == '\n') {
+			if(IS_NEWLINECHAR(c)) {
+				if(c != *data && IS_NEWLINECHAR(*data)) data++; // do we even need to skip?
 				buf->data[buf->length++] = '\r';
-				buf->data[buf->length++] = 0;
+				buf->data[buf->length++] = '\n';
+				buf->data[buf->length++] = '\0';
 				fifo_add_to_tx(irq);
-				break;
-			}
+				buf = get_buffer(irq);
+				assert(buf);
+
+			} else  buf->data[buf->length++] = c;
 			length--;
 		}
 	}
@@ -185,26 +225,6 @@ void USART3_IRQHandler(){ // { USARTx_IT__IRQHandler(){
 
 
 
-UART_HandleTypeDef *s_chuart;
-void uart_set_console_out(UART_HandleTypeDef* huart){
-	s_chuart = huart;
-	memset(irq_lines,0,sizeof(t_line_buffer*)*256);
-	memset(buffers,0,sizeof(t_line_buffer)*BUFFER_COUNT);
-}
-
-
-
-
-void uart_putraw(char c) {
-	if(!uart_init) return;
-	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TXE))); // trasmit empty
-	s_chuart->Instance->DR = c;
-}
-void direct_uart_puts(const char* str) {
-	if(!uart_init) return;
-	while(*str)uart_putraw(*str++);
-	while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
-}
 
 
 
@@ -339,34 +359,9 @@ void uart_puts(const char* str){
 }
 
 void uart_write(const uint8_t* data, size_t len){
-	 // fifo_putc(*data++);
-	  //while(len--) _uart_putc(*data++);
 	fifo_write(data,len);
-//	  while(len--) fifo_putc(*data++);
-	//fifo_fill_dma_buffer();
-#if 0
-	//while(uart_trasmitting);
-	//uart_trasmitting = true;
-	//BSP_LED_On(LED_BLUE);
-	//HAL_UART_Transmit_DMA(&huart3,(uint8_t*)data, len);
-
-	while(buffer_level > 0){
-		uart_send_buffer(&uart_buffer[buffer_level-1]);
-		buffer_level--;
-	}
-__uart_write(data,len);
-	//while(len--) _uart_putc(*data++);
-	//while(!(__HAL_UART_GET_FLAG(s_chuart, UART_FLAG_TC))); // trasmit complete
-#endif
 }
 
-void uart_puti(unsigned long value, int width, t_uart_mode mode) {
-	char buf[65];
-	itoa(value,buf,10);
-	uart_puts(buf);
-	//char* buffer = uart_buffr +
-	//void uart_puti(unsigned long value, int width, t_uart_mode mode);
-}
 
 void uart_print(const char* fmt,...){
 	char buf[128];
@@ -378,9 +373,7 @@ void uart_print(const char* fmt,...){
 	uart_write((uint8_t*)buf,len);
 	//uart_puts(buf);
 }
-void uart_raw_write(const uint8_t* data, size_t len){
-	while(len--) uart_putc(*data++);
-}
+
 void uart_raw_print(const char* fmt,...){
 	char buf[128];
 	va_list va;
@@ -391,6 +384,31 @@ void uart_raw_print(const char* fmt,...){
 	uart_raw_write((uint8_t*)buf,len);
 }
 
+void DebugMessage(LogLevelTypeDef level, const char* message){
+	static const char* level_to_string[] = {
+		ANSI_COLOR_FORGROUND_RED "ERROR" ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_YELLOW "WARN" ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_WHITE "USER " ANSI_COLOR_RESET ": ",
+		ANSI_COLOR_FORGROUND_WHITE "DEBUG" ANSI_COLOR_RESET ": ",
+	};
+	struct timeval t1;
+	char buf[128];
+	gettimeofday(&t1, NULL);
+	uint32_t irq = __get_IPSR();
+	assert(message);
+	int len=sprintf(buf,"[%2X:%lu.%07lu] %s: %s\r\n", irq, t1.tv_sec ,t1.tv_usec ,level_to_string[level],message);
+	buf[127]=0; // sanity
+	uart_write((uint8_t*)buf,len);
+}
+void PrintDebugMessage(LogLevelTypeDef level, const char* fmt, ...){
+	char buf[128];
+	va_list va;
+	va_start(va,fmt);
+	vsprintf(buf,fmt,va);
+	va_end(va);
+	buf[127]=0;
+	DebugMessage(level,buf);
+}
 /* USER CODE END 1 */
 
 /**
