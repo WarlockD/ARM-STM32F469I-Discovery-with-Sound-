@@ -140,7 +140,13 @@ void testusb() {
 }
 void SystemTimerConfig();
 /* USER CODE END 0 */
-
+int f9_main(void);
+void root_thread(void){
+	printf("We made it!");
+	while(1);
+}
+void __l4_start(void);
+int f9_skip_main() ;
 int main(void)
 {
 
@@ -183,6 +189,9 @@ int main(void)
 
   // clear the debug terminal
   uart_print("\033[2J\033[;H");
+  uart_print("__l4_start %s \r\n", __DATE__ __TIME__);
+  f9_skip_main();
+  while(1); //
   DbgUsr("Starting LCD/TS Init");
    // OnError_Handler(lcd_status != LCD_OK);
 

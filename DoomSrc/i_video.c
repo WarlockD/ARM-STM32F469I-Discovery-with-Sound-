@@ -267,7 +267,7 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #define  HID_KEY_RIGHTALT                           0xE6
 #define  HID_KEY_RIGHT_GUI                          0xE7
 
-#include "lcd.h"
+//#include "lcd.h"
 #include <assert.h>
 
 #include "touch.h"

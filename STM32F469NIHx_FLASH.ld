@@ -64,6 +64,13 @@ RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
 FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
 }
+SYSTEM_CALL_BASE	= 0x00000800;
+KERNEL_BASE		= 0x00001000;
+USERSPACE_BASE		= 0x0000C000;
+
+IDLE_STACK_SIZE		= 0x00000100;
+KERNEL_STACK_SIZE	= 0x00000300;
+ROOT_THREAD_STACK_SIZE	= 0x00000200;
 
 /* Define output sections */
 SECTIONS
@@ -75,7 +82,8 @@ SECTIONS
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
   } >FLASH
-
+  . = KERNEL_BASE; /* starto f the kernel base */
+  kernel_text_start = .;
   /* The program code and other data goes into FLASH */
   .text :
   {
@@ -91,6 +99,9 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
+    init_hook_start = .;
+	KEEP(*(.init_hook))
+	init_hook_end = .;
   } >FLASH
 
   /* Constant data goes into FLASH */
@@ -101,14 +112,14 @@ SECTIONS
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
   } >FLASH
-
+ 
   .ARM.extab   : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
   .ARM : {
     __exidx_start = .;
     *(.ARM.exidx*)
     __exidx_end = .;
   } >FLASH
-
+  
   .preinit_array     :
   {
     PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -129,20 +140,35 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
   } >FLASH
-
+  kernel_text_end = .;
   /* used by the startup to initialize data */
+  	.stack :
+	ALIGN (256)
+	{
+		idle_stack_start = .;
+		. += IDLE_STACK_SIZE;
+		idle_stack_end = .;
+		. += KERNEL_STACK_SIZE;
+		kernel_stack_end = .;
+		stack_end = .;
+	} > RAM
   _sidata = LOADADDR(.data);
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
   .data : 
   {
     . = ALIGN(4);
+    kernel_data_start = .;
+	kip_start = .;
+	*(.kip*)
+	kip_end = .;
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
+    kernel_data_end = .;
   } >RAM AT> FLASH
 
   _siccmram = LOADADDR(.ccmram);
@@ -169,19 +195,76 @@ SECTIONS
   . = ALIGN(4);
   .bss :
   {
+  	bss_start = .;
+	kernel_bss_start = .;
     /* This is used by the startup in order to initialize the .bss secion */
     _sbss = .;         /* define a global symbol at bss start */
     __bss_start__ = _sbss;
     *(.bss)
     *(.bss*)
     *(COMMON)
-
-    . = ALIGN(4);
+      . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
     __bss_end__ = _ebss;
+    *(.ktable*)		/* Statically allocated kernel table */
+    . = ALIGN(4);
+	kernel_bss_end = .;
+	bitmap_bitband_start = .;
+	*(.bitmap_bitband*)
+	bitmap_bitband_end = .;
+	bss_end = .;
   } >RAM
 
-  /* User_heap_stack section, used to check that there is enough RAM left */
+
+
+ 	 user_text_flash_start = ADDR(.text) + 0xc000;
+	.user_text :
+	/* AT ( 0x0800c000 ) */
+	ALIGN (256)
+	{
+		user_text_start = .;
+		*(.user_text*)
+		. = ALIGN (256);
+		user_text_end = .;
+	} > RAM
+	user_text_flash_end = user_text_flash_start + SIZEOF(.user_text);
+	end_of_text = .;
+
+	.user_data : /* AT( 0x0800c000 + SIZEOF(.user_text) )*/
+	ALIGN (256)
+	{
+		user_data_start = .;
+		root_stack_start = .;
+		. += ROOT_THREAD_STACK_SIZE;
+		root_stack_end = .;
+		*(.user_data*)
+		user_runtime_start = .;
+		KEEP(*(.user_runtime))
+		user_runtime_end = .;
+		. = ALIGN (256);
+		user_data_end = .;
+	} > RAM
+
+		.user_bss (NOLOAD) :
+		ALIGN (256)
+		{
+			user_bss_start = .;
+			*(.user_bss*)
+			. = ALIGN (256);
+			user_bss_end = .;
+			mem0_start = .;
+		} > RAM
+		
+		.data_AHB (NOLOAD) :
+	{
+		kernel_ahb_start = .;
+		bitmap_start = .;
+		*(.bitmap*)
+		bitmap_end = .;
+		kernel_ahb_end = .;
+		mem1_start = .;
+	} > CCMRAM	
+		  /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack :
   {
     . = ALIGN(8);
@@ -191,9 +274,6 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
-
-  
-
   /* Remove information from the standard libraries */
   /DISCARD/ :
   {

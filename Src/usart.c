@@ -43,7 +43,7 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include <sys/queue.h>
+#include <queue.h>
 #include "usart.h"
 #include "stm32469i_discovery.h"
 #include "gpio.h"

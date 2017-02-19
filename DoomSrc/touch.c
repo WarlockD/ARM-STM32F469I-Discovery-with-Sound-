@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include "stm32f4xx.h"
 #include "stm32469i_discovery_ts.h"
-#include "lcd.h"
 #include "main.h"
 #include "touch.h"
 
