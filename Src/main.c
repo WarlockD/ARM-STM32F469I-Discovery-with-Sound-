@@ -65,6 +65,7 @@
 #include "usb_host.h"
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
+#include <os/ktimer.h>
 
 
 /* USER CODE END Includes */
@@ -190,7 +191,8 @@ int main(void)
   // clear the debug terminal
   uart_print("\033[2J\033[;H");
   uart_print("__l4_start %s \r\n", __DATE__ __TIME__);
-  f9_skip_main();
+  ktimer_event_init();
+
   while(1); //
   DbgUsr("Starting LCD/TS Init");
    // OnError_Handler(lcd_status != LCD_OK);

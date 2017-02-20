@@ -34,17 +34,17 @@
 								<option id="gnu.c.compiler.option.debugging.level.1564471419" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1071076670" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/DoomSrc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Debug}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/DoomSrc/chocdoom}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/Third_Party/FatFs/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Discovery}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/chocdoom}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/DoomSrc/opl}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/CMSIS/Include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/STM32F4xx_HAL_Driver/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/f9/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Discovery}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Middlewares/Third_Party/FatFs}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/DoomSrc/chocdoom}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Inc}&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1134411373" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__weak=&quot;__attribute__((weak))&quot;"/>
@@ -64,23 +64,19 @@
 								<option id="gnu.cpp.compiler.option.optimization.level.926200119" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.debugging.level.643557258" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.251589608" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="../uart_test/netbsd/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Discovery}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Components/Common}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Components/otm8009a}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/opl}&quot;"/>
-									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/DoomSrc/chcodoom"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/chocdoom}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Discovery}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/opl}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="../uart_test/os/include"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Inc}&quot;"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Inc"/>
-									<listOptionValue builtIn="false" value="../uart_test/uart_test/netbsd/include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/netbsd/include"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers"/>
@@ -92,7 +88,22 @@
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Components/otm8009a"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/DoomSrc"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/DoomSrc/chcodoom"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Debug"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Inc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/netbsd/include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Middlewares/Third_Party/FatFs/src"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Discovery"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Components/Common"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Components/otm8009a"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/DoomSrc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Debug"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
@@ -141,23 +152,19 @@
 							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.777811759" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver"/>
 							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.1715161228" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler">
 								<option id="gnu.both.asm.option.include.paths.1504148051" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="../uart_test/netbsd/include"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Include}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Discovery}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Components/Common}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Components/otm8009a}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/opl}&quot;"/>
-									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/DoomSrc/chcodoom"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/chocdoom}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Middlewares/Third_Party/FatFs/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Discovery}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/DoomSrc/opl}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/CMSIS/Include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc}&quot;"/>
+									<listOptionValue builtIn="false" value="../uart_test/os/include"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/uart_test/uart_test/Inc}&quot;"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Inc"/>
-									<listOptionValue builtIn="false" value="../uart_test/uart_test/netbsd/include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/netbsd/include"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers"/>
@@ -169,7 +176,22 @@
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Components/otm8009a"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/DoomSrc"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/DoomSrc/chcodoom"/>
 									<listOptionValue builtIn="false" value="../uart_test/uart_test/Debug"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Inc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/netbsd/include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Middlewares/Third_Party/FatFs/src/drivers"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Middlewares/Third_Party/FatFs/src"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Discovery"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Components/Common"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Components/otm8009a"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/DoomSrc"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/DoomSrc/opl"/>
+									<listOptionValue builtIn="false" value="D:/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/uart_test/uart_test/Debug"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Inc"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc"/>
 									<listOptionValue builtIn="false" value="C:/Users/Paul/Documents/GitHub/ARM-STM32F469I-Discovery-with-Sound-/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
@@ -191,30 +213,58 @@
 							</tool>
 						</toolChain>
 					</folderInfo>
-					<folderInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.262463889.1717531140" name="/" resourcePath="f9/platform/stm32f4">
-						<toolChain id="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug.1418136511" name="Ac6 STM32 MCU GCC" superClass="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug" unusedChildren="">
-							<option id="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672.1302686195" name="Prefix" superClass="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672"/>
-							<option id="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374.1468005297" name="Mcu" superClass="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374"/>
-							<option id="fr.ac6.managedbuild.option.gnu.cross.board.1400651759.1791813314" name="Board" superClass="fr.ac6.managedbuild.option.gnu.cross.board.1400651759"/>
-							<option id="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428.1134534771" name="Instruction Set" superClass="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428"/>
-							<option id="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453.174860527" name="Floating point hardware" superClass="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453"/>
-							<option id="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839.509072457" name="Floating-point ABI" superClass="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839"/>
+					<folderInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.262463889.76802113" name="/" resourcePath="os/src">
+						<toolChain id="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug.1919365413" name="Ac6 STM32 MCU GCC" superClass="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug" unusedChildren="">
+							<option id="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672.1192277084" name="Prefix" superClass="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374.159593205" name="Mcu" superClass="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.board.1400651759.1972552978" name="Board" superClass="fr.ac6.managedbuild.option.gnu.cross.board.1400651759"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428.1636846302" name="Instruction Set" superClass="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453.811135209" name="Floating point hardware" superClass="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839.1223335624" name="Floating-point ABI" superClass="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="fr.ac6.managedbuild.targetPlatform.gnu.cross" isAbstract="false" osList="all" superClass="fr.ac6.managedbuild.targetPlatform.gnu.cross"/>
-							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.326320743" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076">
-								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1558208797" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c"/>
-								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s.87011537" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.634007682" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076">
+								<option id="gnu.c.compiler.option.dialect.std.700398667" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
+								<option id="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level.1216595483" name="Optimization Level" superClass="fr.ac6.managedbuild.gnu.c.compiler.option.optimization.level" value="fr.ac6.managedbuild.gnu.c.optimization.level.none" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.debugging.level.805239806" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" value="gnu.c.debugging.level.default" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.warnings.extrawarn.1743735833" name="Extra warnings (-Wextra)" superClass="gnu.c.compiler.option.warnings.extrawarn" value="false" valueType="boolean"/>
+								<option id="fr.ac6.managedbuid.gnu.c.compiler.option.misc.other.827800482" name="Other flags" superClass="fr.ac6.managedbuid.gnu.c.compiler.option.misc.other" value="-fmessage-length=0" valueType="string"/>
+								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1353762151" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c"/>
+								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s.505402666" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.s"/>
 							</tool>
-							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.543374638" name="MCU G++ Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.442258721">
-								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp.1281063203" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp"/>
-								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s.2070132743" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.331496622" name="MCU G++ Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.442258721">
+								<option id="gnu.cpp.compiler.option.dialect.std.1385512815" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="false" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.optimization.level.265328030" name="Optimization Level" superClass="gnu.cpp.compiler.option.optimization.level" value="gnu.cpp.compiler.optimization.level.more" valueType="enumerated"/>
+								<option id="gnu.cpp.compiler.option.debugging.level.2075014403" name="Debug Level" superClass="gnu.cpp.compiler.option.debugging.level" value="gnu.cpp.compiler.debugging.level.default" valueType="enumerated"/>
+								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp.333698099" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.cpp"/>
+								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s.584201734" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.input.s"/>
 							</tool>
-							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.1354493117" name="MCU GCC Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.764514404"/>
-							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.1610843317" name="MCU G++ Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.646928096"/>
-							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.335277685" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver.777811759"/>
-							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.2067622528" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.1715161228">
-								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.949984281" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
-								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.assembler.input.376061689" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.input"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.1521836597" name="MCU GCC Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.764514404">
+								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script.1821958235" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script" value="${workspace_loc:/${ProjName}/LinkerScript.ld}" valueType="string"/>
 							</tool>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.1959497746" name="MCU G++ Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.646928096">
+								<option id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.script.787158804" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.script" value="${workspace_loc:/${ProjName}/LinkerScript.ld}" valueType="string"/>
+							</tool>
+							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.2084970845" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver.777811759"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.2019079782" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.1715161228">
+								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1304364593" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
+								<inputType id="fr.ac6.managedbuild.tool.gnu.cross.assembler.input.1176462162" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.input"/>
+							</tool>
+						</toolChain>
+					</folderInfo>
+					<folderInfo id="fr.ac6.managedbuild.config.gnu.cross.exe.debug.262463889.587006235" name="/" resourcePath="Src/unused">
+						<toolChain id="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug.759062175" name="Ac6 STM32 MCU GCC" superClass="fr.ac6.managedbuild.toolchain.gnu.cross.exe.debug" unusedChildren="">
+							<option id="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672.386689376" name="Prefix" superClass="fr.ac6.managedbuild.option.gnu.cross.prefix.1773819672"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374.1584033792" name="Mcu" superClass="fr.ac6.managedbuild.option.gnu.cross.mcu.815835374"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.board.1400651759.682434666" name="Board" superClass="fr.ac6.managedbuild.option.gnu.cross.board.1400651759"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428.500500719" name="Instruction Set" superClass="fr.ac6.managedbuild.option.gnu.cross.instructionSet.764751428"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453.277273303" name="Floating point hardware" superClass="fr.ac6.managedbuild.option.gnu.cross.fpu.608653453"/>
+							<option id="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839.1162884374" name="Floating-point ABI" superClass="fr.ac6.managedbuild.option.gnu.cross.floatabi.290794839"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1804840767" name="MCU GCC Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.compiler.681099076"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.1301864930" name="MCU G++ Compiler" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.compiler.442258721"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.1854596197" name="MCU GCC Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.764514404"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.313754946" name="MCU G++ Linker" superClass="fr.ac6.managedbuild.tool.gnu.cross.cpp.linker.646928096"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.archiver.1790796562" name="MCU GCC Archiver" superClass="fr.ac6.managedbuild.tool.gnu.archiver.777811759"/>
+							<tool id="fr.ac6.managedbuild.tool.gnu.cross.assembler.59671708" name="MCU GCC Assembler" superClass="fr.ac6.managedbuild.tool.gnu.cross.assembler.1715161228"/>
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
@@ -224,10 +274,7 @@
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Inc"/>
 						<entry excluding="ST_HOST_Library/usbh_hid_mouse.c|ST_HOST_Library|ST_HOST_Library/usbh_hid_keybd.c|ST_HOST_Library/usbh_hid.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="f9/include/board"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="f9/kernel"/>
-						<entry excluding="stm32f4|stm32f429" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="f9/platform"/>
+						<entry excluding="unused|os/src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
 						<entry excluding="example-codelock.c|example-small.c|example-buffer.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="pt"/>
 					</sourceEntries>
 				</configuration>
