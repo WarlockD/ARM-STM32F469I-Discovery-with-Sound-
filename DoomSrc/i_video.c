@@ -24,7 +24,7 @@
 
 static const char
 rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
-#include "main.h"
+#include <doom_main.h>
 #include "chocdoom/config.h"
 #include "chocdoom/v_video.h"
 #include "chocdoom/m_argv.h"

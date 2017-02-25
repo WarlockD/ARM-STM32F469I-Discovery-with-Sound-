@@ -12,12 +12,12 @@
  *  include files                                                      *
  *---------------------------------------------------------------------*/
 
+#include <doom_main.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include "stm32f4xx.h"
 #include "stm32469i_discovery_ts.h"
-#include "main.h"
 #include "touch.h"
 
 touch_state_t touch_state;

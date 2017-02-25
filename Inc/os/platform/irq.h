@@ -168,6 +168,9 @@ static inline int irq_number(void)
 		irq_return();						\
 	}
 
+#define safe_lock_begin(NAME) do { uint32_t NAME = __get_PRIMASK();  irq_disable();
+#define safe_lock_end(NAME)  if(!(NAME)) irq_enable(); } while(0)
+
 //extern volatile tcb_t *current;
 
 #endif	/* PLATFORM_IRQ_H_ */

@@ -41,7 +41,6 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "stm32f4xx_hal.h"
 #include "dma2d.h"
 #include "dsihost.h"
@@ -66,7 +65,9 @@
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
 #include <os/ktimer.h>
-
+#include <callbacks.h>
+#include <main.h>
+//#include <doom_main.h>
 
 /* USER CODE END Includes */
 
@@ -141,13 +142,12 @@ void testusb() {
 }
 void SystemTimerConfig();
 /* USER CODE END 0 */
-int f9_main(void);
+
 void root_thread(void){
 	printf("We made it!");
 	while(1);
 }
-void __l4_start(void);
-int f9_skip_main() ;
+
 int main(void)
 {
 
@@ -159,9 +159,10 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 
-
+ // __disable_irq();
   /* Configure the system clock */
   SystemClock_Config(); //  SystemTimerConfig(); handled here
+  IrqCallbackInits();
   HAL_Init();
 
   /* Initialize all configured peripherals */
@@ -175,9 +176,15 @@ int main(void)
   BSP_LED_Off(LED_BLUE);
   BSP_LED_Off(LED_ORANGE);
   BSP_LED_Off(LED_GREEN);
-
+  dbg_init();
+  ktimer_event_init();
+ // __enable_irq();
+  // clear the debug terminal
+  printk("\033[2J\033[;H");
+  printk("__l4_start %s \r\n", __DATE__ __TIME__);
+  while(1); //
   BSP_SD_Init();
-  MX_USART3_UART_Init();
+//  MX_USART3_UART_Init();
   MX_FATFS_Init();
  // MX_DSIHOST_DSI_Init();
 
@@ -188,12 +195,9 @@ int main(void)
  // layer0_address = malloc(800 * 480 * sizeof(uint32_t) * 2);
   BSP_LCD_Init();
 
-  // clear the debug terminal
-  uart_print("\033[2J\033[;H");
-  uart_print("__l4_start %s \r\n", __DATE__ __TIME__);
-  ktimer_event_init();
 
-  while(1); //
+
+
   DbgUsr("Starting LCD/TS Init");
    // OnError_Handler(lcd_status != LCD_OK);
 
@@ -479,25 +483,15 @@ void Error_Handler(void)
    * @retval None
    */
 void __assert_func(const char * file, int line, const char * func, const char * value){
-	uart_print("ASSERT(%s:%i): %s()  %s\r\n",file,line,func,value);
-	while(1) {
-
-		BSP_LED_Toggle(LED_RED);
-		HAL_Delay(500);
-
-	}
+	dbg_panic("ASSERT(%s:%s:%i): %s()  %s\r\n",dbg_irq_name(__get_IPSR()), file,line,func,value);
+	Error_Handler();
+	while(1) ;
 }
 void assert_failed(uint8_t* file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
-	uart_print("Wrong parameters value: file %s on line %lu\r\n", file, line);
-  /* USER CODE END 6 */
-	while(1) {
-
-			BSP_LED_Toggle(LED_RED);
-			HAL_Delay(500);
-
-		}
+	dbg_panic("Wrong parameters value: file %s on line %lu\r\n", file, line);
+	Error_Handler();
+	while(1) ;
 }
 
 #endif

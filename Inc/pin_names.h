@@ -167,8 +167,7 @@
 #define D8_GPIO_Port GPIOE
 #define D11_Pin GPIO_PIN_14
 #define D11_GPIO_Port GPIOE
-#define STLK_RX_Pin GPIO_PIN_10
-#define STLK_RX_GPIO_Port GPIOB
+
 #define D16_Pin GPIO_PIN_8
 #define D16_GPIO_Port GPIOH
 #define D18_Pin GPIO_PIN_10
@@ -187,9 +186,11 @@
 #define D12_GPIO_Port GPIOE
 #define D10_Pin GPIO_PIN_13
 #define D10_GPIO_Port GPIOE
+
 #define STLK_TX_Pin GPIO_PIN_11
 #define STLK_TX_GPIO_Port GPIOB
-
+#define STLK_RX_Pin GPIO_PIN_10
+#define STLK_RX_GPIO_Port GPIOB
 
 
 #endif /* PIN_NAMES_H_ */

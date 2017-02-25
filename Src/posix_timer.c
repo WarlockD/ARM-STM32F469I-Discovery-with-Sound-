@@ -10,6 +10,8 @@
 #include <sys/times.h>
 #include <errno.h>
 #include <assert.h>
+#include <main.h>
+
 #define TIMx                           TIM2
 #define TIMx_CLK_ENABLE()              __HAL_RCC_TIM2_CLK_ENABLE()
 /* Definition for TIMx's NVIC */
@@ -52,6 +54,7 @@ void print_time(const char* msg, struct timeval * tp) {
 	uart_print("%s %i.%i\r\n", msg, (int)tp->tv_sec,(int)tp->tv_usec);
 }
 void fifo_fill_dma_buffer(); // for the usart
+#if 0
 void HAL_SYSTICK_Callback() {
 	fifo_fill_dma_buffer() ;
 #if 0
@@ -70,7 +73,7 @@ void HAL_SYSTICK_Callback() {
 	}
 #endif
 }
-
+#endif
 // https://github.com/micropython/micropython/blob/master/stmhal/timer.c
 // Get the frequency (in Hz) of the source clock for the given timer.
 // On STM32F405/407/415/417 there are 2 cases for how the clock freq is set.
@@ -122,20 +125,7 @@ int _EXFUN(gettimeofday, (struct timeval *__restrict __p,
 
 
 
-void TIMx_IRQHandler(void) {
-	if((TIMx->SR & TIM_SR_CC1IF) && (TIMx->DIER & TIM_DIER_CC1IE)){
-		if(hal_timer_enable) HAL_IncTick();
-		TIMx->CCR1 += 1000;
-		if(TIMx->CCR1 > TIMx->ARR) TIMx->CCR1 = 999;
-		TIMx->SR &= ~TIM_SR_CC1IF;
-	}
-	if((TIMx->SR & TIM_SR_UIF) && (TIMx->DIER & TIM_DIER_UIE)){
-		tv_time.tv_usec = TIMx->CNT;
-	    tv_time.tv_sec++;
-	    //TIMx->CCR1 = 999;
-	    TIMx->SR &= ~TIM_SR_UIF;
-	}
-}
+
 
 int _times(struct tms *buf)
 {
@@ -164,9 +154,49 @@ int _gettimeofday (struct timeval * tp, struct timezone * tzp)
   return 0;
 }
 
+uint32_t HAL_GetTick(void)
+{
+	volatile uint32_t sec = tv_time.tv_sec;
+	volatile uint32_t usec = TIMx->CNT;
+	if(usec < 10 || usec > (1000000U-10U)) sec++; // to close to call
+  return sec*1000 + (usec/1000000U);
+}
+void TIM2_IRQHandler(void) {
+	assert(false);
+	if((TIMx->SR & TIM_SR_CC1IF) && (TIMx->DIER & TIM_DIER_CC1IE)){
+		if(hal_timer_enable) HAL_IncTick();
+		TIMx->CCR1 += 1000;
+		if(TIMx->CCR1 > TIMx->ARR) TIMx->CCR1 = 999;
+		TIMx->SR &= ~TIM_SR_CC1IF;
+	}
+	if((TIMx->SR & TIM_SR_UIF) && (TIMx->DIER & TIM_DIER_UIE)){
+		tv_time.tv_usec = TIMx->CNT;
+	    tv_time.tv_sec++;
+	    //TIMx->CCR1 = 999;
+	    TIMx->SR &= ~TIM_SR_UIF;
+	}
+}
+int tick_callback(void* nada){
+	(void)nada;
+	if((TIMx->SR & TIM_SR_CC1IF) && (TIMx->DIER & TIM_DIER_CC1IE)){
+		if(hal_timer_enable) HAL_IncTick();
+		TIMx->CCR1 += 1000;
+		if(TIMx->CCR1 > TIMx->ARR) TIMx->CCR1 = 999;
+		TIMx->SR &= ~TIM_SR_CC1IF;
+	}
+	if((TIMx->SR & TIM_SR_UIF) && (TIMx->DIER & TIM_DIER_UIE)){
+		tv_time.tv_usec = TIMx->CNT;
+		tv_time.tv_sec++;
+		//TIMx->CCR1 = 999;
+		TIMx->SR &= ~TIM_SR_UIF;
+	}
+	return 0;
+}
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 {
 	uint32_t  uwPrescalerValue = (uint32_t)((timer_get_source_freq(2) / 1000000) - 1); // 1us
+	RegesterCallback(TIMx_IRQn, &tick_callback,NULL);
+	printk("HAL_InitTick");
 	/* Set TIMx instance */
 	ClockHandle.Instance = TIMx;
 	ClockHandle.Init.Period            = 999999; /* 1 second */

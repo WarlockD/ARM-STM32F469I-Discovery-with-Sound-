@@ -9,9 +9,10 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <sys/time.h>
-
 #include <stm32f4xx_hal.h>
 #include <stm32469i_discovery.h>
+
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +30,10 @@ typedef enum {
 #define ANSI_COLOR_FORGROUND_YELLOW ANSI_ESCAPE_STRING "[33m"
 #define ANSI_COLOR_FORGROUND_WHITE  ANSI_ESCAPE_STRING "[37m"
 #define ANSI_COLOR_RESET		    ANSI_ESCAPE_STRING "[0m"
+
+
+
+
 
 void uart_putc(char c); /// blocking instant put c
 void uart_puts(const char* str); // blocking, instant put string

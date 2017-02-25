@@ -31,19 +31,98 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx.h"
+#include <stm32f4xx_hal.h>
 #include "stm32f4xx_it.h"
+#include <callbacks.h>
+#include <os\platform\irq.h>
+#include <os\debug.h>
 
-/* USER CODE BEGIN 0 */
-//extern HCD_HandleTypeDef hhcd;
-/* SAI handler declared in "stm32469i_discovery_audio.c" file */
-extern SAI_HandleTypeDef haudio_out_sai;
-/* I2S handler declared in "stm32469i_discovery_audio.c" file */
-extern I2S_HandleTypeDef haudio_in_i2s;
+extern SAI_HandleTypeDef haudio_out_sai; /* SAI handler declared in "stm32469i_discovery_audio.c" file */
+extern I2S_HandleTypeDef haudio_in_i2s; /* I2S handler declared in "stm32469i_discovery_audio.c" file */
 
 extern DMA_HandleTypeDef hdma_usart3_tx;
 
+callback_t irq_callbacks[128];
+
+#if 0
+void __loader_start(void);
+
+void nointerrupt(void)
+{
+	while (1)
+		/* wait */ ;
+}
+
+void dummy_handler(void)
+{
+	return;
+}
+
+__ISR_VECTOR
+void (* const g_pfnVectors[])(void) = {
+	/* Core Level - ARM Cortex-M */
+	(void *) &stack_end,	/* initial stack pointer */
+	__loader_start,		/* reset handler */
+	nointerrupt,		/* NMI handler */
+	nointerrupt,		/* hard fault handler */
+	nointerrupt,		/* MPU fault handler */
+	nointerrupt,		/* bus fault handler */
+	nointerrupt,		/* usage fault handler */
+	0,			/* Reserved */
+	0,			/* Reserved */
+	0,			/* Reserved */
+	0,			/* Reserved */
+	nointerrupt,		/* SVCall handler */
+	nointerrupt,		/* Debug monitor handler */
+	0,			/* Reserved */
+	dummy_handler,		/* PendSV handler */
+	dummy_handler, 		/* SysTick handler */
+	/* Chip Level: vendor specific */
+	/* FIXME: use better IRQ vector generator */
+#include INC_PLAT(nvic_table.h)
+};
+#endif
+int EmptyCallback(void* udata) {
+	(void)udata;
+	dbg_panic("No Callback for: %s", dbg_irq_name(__get_IPSR()));
+	return 0;
+}
+//void Default_Handler() __attribute__((naked));
+void Default_Handler() {
+//	irq_enter();
+	volatile uint32_t irq =  __get_IPSR();
+	if(irq < 16) {
+		dbg_panic("System IRQ called: %s", dbg_irq_name(__get_IPSR()));
+		assert(0);
+	}
+	if(irq >128) {
+		dbg_panic("IRQ to big?: %X", irq);
+		assert(0);
+	}
+	callback_t* callback = &irq_callbacks[irq];
+	if(!callback->callback){
+		dbg_panic("No Callback for: %s", dbg_irq_name(__get_IPSR()));
+		assert(0);
+	}
+	callback->callback(callback->udata);
+	//irq_return();
+}
+
+int RegesterCallback(IRQn_Type type, int(*func)(void*), void* udata) {
+	if(type <0) return 0;
+	assert(func);
+	safe_lock_begin(_regcallback);
+	callback_t* callback = &irq_callbacks[type+16];
+	callback->callback = func;
+	callback->udata = udata;
+	safe_lock_end(_regcallback);
+	return 1;
+}
+void IrqCallbackInits() {
+	for(uint32_t i=0;i < 128; i++) {
+		irq_callbacks[i].callback = EmptyCallback;
+	}
+}
 void DMA1_Stream3_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(&hdma_usart3_tx);
@@ -53,6 +132,11 @@ void AUDIO_SAIx_DMAx_IRQHandler(void)
 {
   HAL_DMA_IRQHandler(haudio_out_sai.hdmatx);
 }
+
+
+
+
+
 
 /**
   * @brief This function handles DMA1 Stream 2 interrupt request.
@@ -103,7 +187,35 @@ void EXTI2_IRQHandler(void)
 void NMI_Handler(void)
 {
 }
+void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
+{
+/* These are volatile to try and prevent the compiler/linker optimising them
+away as the variables never actually get used.  If the debugger won't show the
+values of the variables, make them global my moving their declaration outside
+of this function. */
+volatile uint32_t r0;
+volatile uint32_t r1;
+volatile uint32_t r2;
+volatile uint32_t r3;
+volatile uint32_t r12;
+volatile uint32_t lr; /* Link register. */
+volatile uint32_t pc; /* Program counter. */
+volatile uint32_t psr;/* Program status register. */
 
+    r0 = pulFaultStackAddress[ 0 ];
+    r1 = pulFaultStackAddress[ 1 ];
+    r2 = pulFaultStackAddress[ 2 ];
+    r3 = pulFaultStackAddress[ 3 ];
+
+    r12 = pulFaultStackAddress[ 4 ];
+    lr = pulFaultStackAddress[ 5 ];
+    pc = pulFaultStackAddress[ 6 ];
+    psr = pulFaultStackAddress[ 7 ];
+
+    /* When the following line is hit, the variables contain the register values. */
+    for( ;; );
+}
+void HardFault_Handler( void ) __attribute__( ( naked ) );
 /**
   * @brief  This function handles Hard Fault exception.
   * @param  None
@@ -111,10 +223,23 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-  }
+	/* The prototype shows it is a naked function - in effect this is just an
+	assembly function. */
+
+
+	/* The fault handler implementation calls a function called
+	prvGetRegistersFromStack(). */
+	__asm volatile
+	(
+		" tst lr, #4                                                \n"
+		" ite eq                                                    \n"
+		" mrseq r0, msp                                             \n"
+		" mrsne r0, psp                                             \n"
+		" ldr r1, [r0, #24]                                         \n"
+		" ldr r2, handler2_address_const                            \n"
+		" bx r2                                                     \n"
+		" handler2_address_const: .word prvGetRegistersFromStack    \n"
+    );
 }
 
 /**

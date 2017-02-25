@@ -48,6 +48,7 @@
 #include "stm32469i_discovery.h"
 #include "gpio.h"
 
+#if 0
 /* USER CODE BEGIN 0 */
 #include <string.h>
 #include <stdarg.h>
@@ -96,8 +97,6 @@ static t_linebuffer* irq_lines[256];
 SIMPLEQ_HEAD(t_linebuffer_queue, __t_linebuffer) tx_fifo = SIMPLEQ_HEAD_INITIALIZER(tx_fifo);
 
 static bool uart_trasmiting = false;
-UART_HandleTypeDef huart3;
-DMA_HandleTypeDef hdma_usart3_tx;
 
 #define IS_NEWLINECHAR(N) ((N)=='\r' || (N)=='\n')
 //while(hdma_usart3_tx.Instance->NDTR>0);
@@ -210,6 +209,7 @@ void fifo_write(const uint8_t* data, size_t length) {
 }
 #define USARTx_IT_IRQ	  		  USART3_IRQn
 #define USARTx_IT__IRQHandler     USART3_IRQHandler
+#if 0
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	(void)huart;
@@ -218,11 +218,12 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 	//fifo_fill_dma_buffer();
 }
+
 void USART3_IRQHandler(){ // { USARTx_IT__IRQHandler(){
 	BSP_LED_On(LED_RED);
 	HAL_UART_IRQHandler(&huart3);
 }
-
+#endif
 
 
 
@@ -250,67 +251,6 @@ void MX_USART3_UART_Init(void)
   uart_init = true;
 }
 
-void HAL_UART_MspInit(UART_HandleTypeDef* huart)
-{
-
-  GPIO_InitTypeDef GPIO_InitStruct;
-  if(huart->Instance==USART3)
-  {
-  /* USER CODE BEGIN USART3_MspInit 0 */
-
-  /* USER CODE END USART3_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_USART3_CLK_ENABLE();
-  
-    /**USART3 GPIO Configuration    
-    PB10     ------> USART3_TX
-    PB11     ------> USART3_RX 
-    */
-    GPIO_InitStruct.Pin = STLK_RX_Pin|STLK_TX_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF7_USART3;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    /* DMA interrupt init */
-     /* DMA1_Stream3_IRQn interrupt configuration */
-     HAL_NVIC_SetPriority(USART3_IRQn, 5, 0);
-     HAL_NVIC_EnableIRQ(USART3_IRQn);
-    /* Peripheral DMA init*/
-     //	RINGFIFO_RESET(gUartFifo);
-	/* DMA controller clock enable */
-	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	/* DMA interrupt init */
-	/* DMA1_Stream3_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
-
-      hdma_usart3_tx.Instance = DMA1_Stream3;
-      hdma_usart3_tx.Init.Channel = DMA_CHANNEL_4;
-      hdma_usart3_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-      hdma_usart3_tx.Init.PeriphInc = DMA_PINC_DISABLE;
-      hdma_usart3_tx.Init.MemInc = DMA_MINC_ENABLE;
-      hdma_usart3_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-      hdma_usart3_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-      hdma_usart3_tx.Init.Mode = DMA_NORMAL;
-      hdma_usart3_tx.Init.Priority = DMA_PRIORITY_LOW;
-      hdma_usart3_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-      assert(HAL_DMA_Init(&hdma_usart3_tx) == HAL_OK);
-      __HAL_LINKDMA(huart,hdmatx,hdma_usart3_tx);
-  }
-}
-
-void HAL_UART_MspDeInit(UART_HandleTypeDef* huart)
-{
-
-  if(huart->Instance==USART3)
-  {
-    __HAL_RCC_USART3_CLK_DISABLE();
-    HAL_GPIO_DeInit(GPIOB, STLK_RX_Pin|STLK_TX_Pin);
-    HAL_DMA_DeInit(huart->hdmatx);
-  }
-} 
 
 bool s_newline_enable = true;
 void uart_return_after_newline(bool enable) {
@@ -409,14 +349,4 @@ void PrintDebugMessage(LogLevelTypeDef level, const char* fmt, ...){
 	buf[127]=0;
 	DebugMessage(level,buf);
 }
-/* USER CODE END 1 */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif

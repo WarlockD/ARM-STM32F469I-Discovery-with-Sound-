@@ -20,6 +20,7 @@
 #include "ff.h"
 #include "stm32469i_discovery_sdram.h"
 #include <setjmp.h>
+#include <os\debug.h>
 
 //#define DEBUG_SBRK
 
@@ -46,17 +47,6 @@
 
 
 
-void ManualPrintHeap(uint32_t amount, uint32_t left) {
-	uart_puts("Heap expanded by ");
-	uart_puti(amount,0,UART_MODE_NONE);
-
-	uart_puts(", memory left: ");
-	uart_puti(left,0,UART_MODE_NONE);
-	uart_puts("\r\n");
-}
-
-
-
 #define FB_SIZE (800*480*sizeof(uint32_t))
 #define FB_SIZE_TOTAL (FB_SIZE*2)
 #define SDRAM_START (SDRAM_DEVICE_ADDR + FB_SIZE_TOTAL)
@@ -77,7 +67,7 @@ caddr_t _sbrk_sdram(int incr){
 	prev_heap_end = heap_end;
 	if (heap_end + incr > _heap_end_of_sdram)
 	{
-		uart_puts("Heap and stack collision\n");
+		dbg_panic("Heap and stack collision\n");
 		abort();
 		errno = ENOMEM;
 		return (caddr_t) -1;

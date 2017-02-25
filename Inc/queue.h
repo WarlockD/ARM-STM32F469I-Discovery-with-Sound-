@@ -394,6 +394,131 @@ struct {								\
 	        ((struct type *)(void *)				\
 		((char *)((head)->sqh_last) - offsetof(struct type, field))))
 
+// Parrent list, this basicly combines a tail queue in with a head
+#define	_TREE_ENTRY(type, qual)					\
+struct {\
+    qual type *tqh_first;		/* first element */		\
+	qual type *qual *tqh_last;	/* addr of last next element */	\
+	qual type *tqe_next;		/* next element */		\
+	qual type *qual *tqe_prev;	/* address of previous next element */\
+	qual type *parent;		\
+}
+#define TREE_ENTRY(type)	_TREE_ENTRY(struct type,)
+
+/*
+ * Tail queue access methods.
+ */
+#define TREE_PARENT(elm,field)		((elm)->field.parent)
+#define	TREE_FIRST(elm,field)		((elm)->field.tqh_first)
+#define	TREE_END(elm,field)			(NULL)
+#define	TREE_NEXT(elm, field)		((elm)->field.tqe_next)
+#define	TREE_LAST(elm, field) 		(((elm)->field.tqh_last)->tqh_last)
+#define	TREE_LEMPTY(head)		(TREE_FIRST(head) == TREE_END(head))
+
+
+
+
+#define	TREE_FOREACH(var, head, field)					\
+	for ((var) = ((head)->tqh_first);				\
+	    (var) != TREE_END(head);					\
+	    (var) = ((var)->field.tqe_next))
+
+#define	TREE_FOREACH_SAFE(var, head, field, next)			\
+	for ((var) = ((head)->tqh_first);				\
+	    (var) != TREE_END(head) &&					\
+	    ((next) = TREE_NEXT(var, field), 1); (var) = (next))
+
+#define	TREE_FOREACH_REVERSE(var, head, headname, field)		\
+	for ((var) = TREE_LAST((head), headname);			\
+	    (var) != TREE_END(head);					\
+	    (var) = TREE_PREV((var), headname, field))
+
+#define	TREE_FOREACH_REVERSE_SAFE(var, head, headname, field, prev)	\
+	for ((var) = TREE_LAST((head), headname);			\
+	    (var) != TREE_END(head) && 				\
+	    ((prev) = TREE_PREV((var), headname, field), 1); (var) = (prev))
+
+
+#define	QUEUEDEBUG_TREE_INSERT_HEAD(head, elm, field)
+#define	QUEUEDEBUG_TREE_INSERT_TAIL(head, elm, field)
+#define	QUEUEDEBUG_TREE_OP(elm, field)
+#define	QUEUEDEBUG_TREE_PREREMOVE(head, elm, field)
+#define	QUEUEDEBUG_TREE_POSTREMOVE(elm, field)
+
+#define	TREE_INIT(elm,field) do {						\
+	(elm)->field.tqh_first = TREE_END(head);			\
+	(elm)->field.tqh_last = &(elm)->field.tqh_first;	\
+} while (/*CONSTCOND*/0)
+
+#define TREE_INSERT_HEAD(head, elm, field) do {			\
+	QUEUEDEBUG_TREE_INSERT_HEAD((head), (elm), field)		\
+	if (((elm)->field.tqe_next = (head)->field.tqh_first) != TREE_END(head,field))\
+		(head)->field.tqh_first->field.tqe_prev =			\
+		    &(elm)->field.tqe_next;				\
+	else								\
+		(head)->field.tqh_last = &(elm)->field.tqe_next;		\
+	(head)->field.tqh_first = (elm);					\
+	(elm)->field.tqe_prev = &(head)->tqh_first;			\
+	(elm)->field.parent = (head);\
+} while (/*CONSTCOND*/0)
+
+#define	TREE_INSERT_TAIL(head, elm, field) do {			\
+	QUEUEDEBUG_TREE_INSERT_TAIL((head), (elm), field)		\
+	(elm)->field.tqe_next = TREE_END(head);			\
+	(elm)->field.tqe_prev = (head)->tqh_last;			\
+	*(head)->field.tqh_last = (elm);					\
+	(head)->field.tqh_last = &(elm)->field.tqe_next;			\
+	(elm)->field.parent = (head);\
+} while (/*CONSTCOND*/0)
+
+#define	TREE_INSERT_AFTER(head, listelm, elm, field) do {		\
+	QUEUEDEBUG_TREE_OP((listelm), field)				\
+	if (((elm)->field.tqe_next = (listelm)->field.tqe_next) != 	\
+	    TREE_END(head))						\
+		(elm)->field.tqe_next->field.tqe_prev = 		\
+		    &(elm)->field.tqe_next;				\
+	else								\
+		(head)->field.tqh_last = &(elm)->field.tqe_next;		\
+	(listelm)->field.tqe_next = (elm);				\
+	(elm)->field.tqe_prev = &(listelm)->field.tqe_next;		\
+	(elm)->field.parent = (head);\
+} while (/*CONSTCOND*/0)
+
+#define	TREE_INSERT_BEFORE(listelm, elm, field) do {			\
+	QUEUEDEBUG_TREE_OP((listelm), field)				\
+	(elm)->field.tqe_prev = (listelm)->field.tqe_prev;		\
+	(elm)->field.tqe_next = (listelm);				\
+	*(listelm)->field.tqe_prev = (elm);				\
+	(listelm)->field.tqe_prev = &(elm)->field.tqe_next;		\
+	(elm)->field.parent = (listelm)->field.parent;\
+} while (/*CONSTCOND*/0)
+
+#define	TREE_REMOVE(head, elm, field) do {				\
+	QUEUEDEBUG_TREE_PREREMOVE((head), (elm), field)		\
+	QUEUEDEBUG_TREE_OP((elm), field)				\
+	if (((elm)->field.tqe_next) != TREE_END(head))			\
+		(elm)->field.tqe_next->field.tqe_prev = 		\
+		    (elm)->field.tqe_prev;				\
+	else								\
+		(head)->field.tqh_last = (elm)->field.tqe_prev;		\
+	*(elm)->field.tqe_prev = (elm)->field.tqe_next;			\
+	(elm)->field.parent = NULL; \
+	QUEUEDEBUG_TREE_POSTREMOVE((elm), field);			\
+} while (/*CONSTCOND*/0)
+
+#define TREE_REPLACE(head, elm, elm2, field) do {			\
+        if (((elm2)->field.tqe_next = (elm)->field.tqe_next) != 	\
+	    TREE_END(head))   						\
+                (elm2)->field.tqe_next->field.tqe_prev =		\
+                    &(elm2)->field.tqe_next;				\
+        else								\
+                (head)->field.tqh_last = &(elm2)->field.tqe_next;		\
+        (elm2)->field.tqe_prev = (elm)->field.tqe_prev;			\
+        *(elm2)->field.tqe_prev = (elm2);				\
+        (elm)->field.parent = NULL; \
+        (elm2)->field.parent = (head); \
+	QUEUEDEBUG_TREE_POSTREMOVE((elm), field);			\
+} while (/*CONSTCOND*/0)
 /*
  * Tail queue definitions.
  */
@@ -413,6 +538,7 @@ struct {								\
 	qual type *qual *tqe_prev;	/* address of previous next element */\
 }
 #define TAILQ_ENTRY(type)	_TAILQ_ENTRY(struct type,)
+
 
 /*
  * Tail queue access methods.
@@ -446,6 +572,8 @@ struct {								\
 	for ((var) = TAILQ_LAST((head), headname);			\
 	    (var) != TAILQ_END(head) && 				\
 	    ((prev) = TAILQ_PREV((var), headname, field), 1); (var) = (prev))
+
+
 
 /*
  * Tail queue functions.

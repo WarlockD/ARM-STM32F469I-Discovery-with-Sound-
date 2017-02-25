@@ -8,7 +8,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include_next <sys\types.h>
+#include <stdbool.h>
+#include <sys\types.h>
 #include "f9_conf.h"
 
 typedef uint32_t ptr_t;

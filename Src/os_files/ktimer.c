@@ -62,7 +62,7 @@ void systick_cfg() {
 	us_systick = HAL_RCC_GetHCLKFreq() /1000000U;
 	ktick_scale = HAL_RCC_GetHCLKFreq()/100000; // 100us
 	init_systick(ms_systick,0);
-
+	ktimer_enabled = true;
   /* SysTick_IRQn interrupt configuration */
   //HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
@@ -111,6 +111,7 @@ void SysTick_Handler() __NAKED;
 void SysTick_Handler()
 //void __ktimer_handler(void)
 {
+	if(!ktimer_enabled) return;
 	ktimer_event_t* event, *next_event;
 	uint32_t next_time = 0;
 	TAILQ_FOREACH_SAFE(event, &ktimer_event_queue, queue,next_event) {

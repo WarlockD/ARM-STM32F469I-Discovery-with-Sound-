@@ -5,8 +5,8 @@
  *      Author: Florian
  */
 
-#ifndef MAIN_H_
-#define MAIN_H_
+#ifndef DOOM_MAIN_H_
+#define DOOM_MAIN_H_
 
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
@@ -85,4 +85,4 @@ void MX_USART6_UART_Init(void);
 
 
 
-#endif /* MAIN_H_ */
+#endif /* DOOM_MAIN_H_ */
